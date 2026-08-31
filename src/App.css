@@ -1,0 +1,502 @@
+@import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap');
+
+/* รีเซ็ตพื้นฐาน */
+body {
+  margin: 0;
+  background-color: #121212;
+  font-family: 'Prompt', sans-serif;
+  color: white;
+  overflow-x: hidden;
+}
+
+/* จัดเลย์เอาต์ให้อยู่กึ่งกลาง */
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+}
+
+.content-wrapper {
+  width: 100%;
+  max-width: 600px;
+  padding: 40px 20px;
+}
+
+/* แอนิเมชันให้หน้าจอปรากฏขึ้นมาอย่างนุ่มนวล */
+.fade-in {
+  animation: fadeIn 0.6s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ตารางแสดงตัวเลือก (Responsive) */
+.pref-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 15px;
+}
+
+/* เอฟเฟกต์เวลาเมาส์ชี้ไปที่การ์ดหมวดหมู่ */
+.card {
+  padding: 20px 15px;
+  border-radius: 12px;
+  text-align: center;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 16px rgba(29, 185, 84, 0.2);
+}
+
+/* เอฟเฟกต์ปุ่ม */
+.btn {
+  width: 100%;
+  padding: 16px;
+  border-radius: 30px;
+  border: none;
+  font-size: 18px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.btn:hover:not(:disabled) {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+}
+
+.btn-primary {
+  margin-top: 50px;
+  background-color: #1DB954;
+  color: white;
+  cursor: pointer;
+}
+
+.btn-disabled {
+  margin-top: 50px;
+  background-color: #555;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.btn-outline {
+  margin-top: 30px;
+  border: 2px solid #b3b3b3;
+  background-color: transparent;
+  color: white;
+  cursor: pointer;
+}
+
+/* สไตล์สำหรับหน้าหลัก (Home) */
+.home-container {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #121212;
+}
+
+/* แถบนำทางด้านบน (Top Bar) */
+.top-bar {
+  background-color: #000000;
+  padding: 20px;
+  text-align: center;
+  border-bottom: 1px solid #282828;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.top-bar h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1DB954; /* สีเขียวสไตล์ Spotify */
+}
+
+/* ตารางแสดงสถานที่ท่องเที่ยว (Responsive) */
+.attraction-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+/* การ์ดสถานที่ท่องเที่ยว */
+.attraction-card {
+  background-color: #282828;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.attraction-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+}
+
+.attraction-img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+}
+
+.tag {
+  background-color: #1DB954;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  display: inline-block;
+  margin-bottom: 10px;
+}
+/* แถบนำทางด้านบนแบบมีรูปพื้นหลัง (Hero Banner) */
+.top-bar {
+  background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.8)), 
+                    url('https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&w=1200&q=80');
+  background-size: cover;
+  background-position: center;
+  padding: 60px 20px;
+  text-align: center;
+  
+  /* เพิ่มความโค้งมนที่มุมล่างซ้ายและขวาของแบนเนอร์ */
+  border-radius: 0 0 30px 30px; 
+  /* ลบเส้นขอบออกแล้วเปลี่ยนเป็นเงาฟุ้งๆ ให้ดูมีมิติแทน */
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4); 
+}
+
+.top-bar h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.text-highlight {
+  color: #1DB954;
+}
+
+/* ========================================= */
+
+/* เอฟเฟกต์การ์ดหมวดหมู่ความสนใจ */
+.card {
+  padding: 20px 15px;
+  border-radius: 20px; /* ปรับให้โค้งมนมากขึ้น (จากเดิม 12px เป็น 20px) */
+  text-align: center;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 16px rgba(29, 185, 84, 0.2);
+}
+
+/* ========================================= */
+
+/* การ์ดสถานที่ท่องเที่ยว (Attraction Card) */
+.attraction-card {
+  background-color: #282828;
+  border-radius: 20px; /* ปรับขอบการ์ดสถานที่ให้โค้งมนรับกัน (จาก 12px เป็น 20px) */
+  overflow: hidden; /* คำสั่งนี้จะทำให้รูปภาพด้านบนถูกตัดมุมให้โค้งตามการ์ดอัตโนมัติ */
+  transition: all 0.3s ease;
+}
+
+.attraction-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* รูปภาพสถานที่ */
+.attraction-img {
+  width: 100%;
+  height: 180px; /* เพิ่มความสูงรูปภาพให้ดูสวยขึ้นเล็กน้อย */
+  object-fit: cover;
+}
+
+/* ป้ายกำกับ (Tag) */
+.tag {
+  background-color: #1DB954;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 15px; /* ปรับป้ายให้โค้งมนเป็นเม็ดยา */
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+  margin-bottom: 12px;
+}
+.ai-input-container {
+  margin-top: 35px;
+  text-align: left;
+}
+
+.ai-input-label {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  display: block;
+  color: #ffffff;
+}
+
+.ai-input {
+  width: 100%;
+  background-color: #282828;
+  color: white;
+  border: 2px solid transparent;
+  border-radius: 20px; /* ขอบโค้งมนเข้ากับปุ่มอื่นๆ */
+  padding: 16px;
+  font-size: 15px;
+  font-family: 'Prompt', sans-serif;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+  resize: none; /* ป้องกันไม่ให้ผู้ใช้ลากขยายขนาดกล่องมั่วๆ */
+}
+
+/* เอฟเฟกต์เวลาผู้ใช้คลิกพิมพ์ข้อความ (Focus) */
+.ai-input:focus {
+  outline: none;
+  border-color: #1DB954; /* ขอบเปลี่ยนเป็นสีเขียวตอนพิมพ์ */
+  background-color: #333333;
+  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.2);
+}
+
+.ai-input::placeholder {
+  color: #888888;
+}
+/* ========================================= */
+/* ปุ่ม AI ขนาดใหญ่ (AI Hero Button) */
+/* ========================================= */
+.ai-hero-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  background: linear-gradient(135deg, #1DB954 0%, #127132 100%);
+  padding: 30px 20px;
+  border-radius: 20px;
+  border: none;
+  color: white;
+  cursor: pointer;
+  margin-bottom: 40px;
+  transition: all 0.4s ease;
+  box-shadow: 0 10px 30px rgba(29, 185, 84, 0.3);
+}
+
+.ai-hero-btn:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 15px 40px rgba(29, 185, 84, 0.5);
+}
+
+.ai-logo {
+  font-size: 60px; /* ขนาดไอคอน AI ใหญ่สะใจ */
+  margin-bottom: 10px;
+}
+
+.ai-title {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.ai-subtitle {
+  font-size: 14px;
+  font-weight: 300;
+  margin-top: 5px;
+  opacity: 0.9;
+}
+/* จัดการกล่อง Input ให้ดูสวยงามและไม่บีบอัดกัน */
+.ai-input-container {
+  display: flex !important; /* เปลี่ยนจาก grid เป็น flex เพื่อยืดหยุ่นกว่า */
+  gap: 20px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.ai-input-container > div {
+  flex: 1; /* ให้กล่องงบกับเวลาเท่ากันเป๊ะ */
+}
+
+.ai-input {
+  width: 100%;
+  padding: 15px;
+  background-color: #282828;
+  border: 2px solid #333;
+  border-radius: 12px;
+  color: white;
+  font-size: 16px;
+  box-sizing: border-box; /* สำคัญมาก: เพื่อไม่ให้ padding ดันกล่องล้น */
+  transition: border 0.3s;
+}
+
+.ai-input:focus {
+  border: 2px solid #1DB954;
+  outline: none;
+}
+
+.ai-input-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #b3b3b3;
+}
+
+/* จัดปุ่มให้อยู่กึ่งกลางและมีระยะห่างที่สบายตา */
+.btn-primary {
+  width: 100%;
+  padding: 18px;
+  background-color: #1DB954;
+  border: none;
+  border-radius: 30px; /* ปุ่มมนๆ ดูทันสมัย */
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 15px;
+}
+
+.pref-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* บังคับให้มี 3 คอลัมน์ต่อแถวเสมอ */
+  gap: 15px;
+  margin-top: 20px;
+}
+
+/* ================= THEME STYLES ================= */
+/* ธีมมืด (Dark Theme) */
+.dark-theme {
+  background-color: #121212;
+  color: white;
+  min-height: 100vh;
+}
+
+/* ธีมสว่าง (Light Theme) */
+.light-theme {
+  background-color: #f4f6f8;
+  color: #333333;
+  min-height: 100vh;
+}
+
+/* บังคับล้างสีพื้นหลังเก่าของ Container */
+.light-theme,
+.light-theme .home-container,
+.light-theme .app-container {
+  background-color: #f4f6f8 !important;
+}
+
+.dark-theme,
+.dark-theme .home-container,
+.dark-theme .app-container {
+  background-color: #121212 !important;
+}
+
+/* ปรับแต่งส่วนประกอบต่างๆ เมื่ออยู่ในธีมสว่าง */
+.light-theme .attraction-card {
+  background-color: #ffffff;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  color: #333;
+}
+
+.light-theme .ai-input {
+  background-color: #ffffff !important;
+  color: #333 !important;
+  border: 2px solid #ccc !important;
+}
+
+.light-theme .ai-input:focus {
+  border: 2px solid #1DB954 !important;
+}
+
+.light-theme .btn-outline {
+  border-color: #ccc;
+  color: #333;
+}
+
+.light-theme .btn-outline:hover {
+  background-color: #e0e0e0;
+}
+
+/* ปุ่มสลับธีม */
+.theme-toggle-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  transition: all 0.3s ease;
+  z-index: 999;
+}
+
+.dark-theme .theme-toggle-btn {
+  background-color: #282828;
+  color: white;
+}
+
+.light-theme .theme-toggle-btn {
+  background-color: #ffffff;
+  color: #333;
+}
+
+.theme-toggle-btn:hover {
+  transform: scale(1.1);
+}
+
+/* ================= 🌟 ช่องค้นหา ================= */
+.search-container {
+  width: 100%;
+  margin: 10px 0 30px 0;
+  position: relative;
+}
+
+.search-input {
+  width: 100%;
+  padding: 16px 20px 16px 50px;
+  border-radius: 30px;
+  border: 2px solid #333;
+  background-color: #282828;
+  color: white;
+  font-size: 16px;
+  font-family: 'Prompt', sans-serif;
+  box-sizing: border-box;
+  transition: all 0.3s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #1DB954;
+  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.2);
+}
+
+.search-icon {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px;
+  color: #888;
+  pointer-events: none;
+}
+
+/* สีของช่องค้นหาในธีมสว่าง */
+.light-theme .search-input {
+  background-color: #ffffff;
+  color: #333;
+  border: 2px solid #ddd;
+}
+
+.light-theme .search-input:focus {
+  border-color: #1DB954;
+}

@@ -1,0 +1,31 @@
+budget,time_hours,category,trip_mood,travel_time_from_city,place_name
+2000,10,mountain,adventure,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+3000,24,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+1500,8,sea,adventure,2.0,อุทยานแห่งชาติหมู่เกาะอ่างทอง
+2500,12,sea,chill,2.0,อุทยานแห่งชาติหมู่เกาะอ่างทอง
+5000,48,sea,chill,2.5,เกาะสมุย
+3500,24,sea,social,2.5,เกาะสมุย
+4000,48,sea,adventure,3.0,เกาะเต่า
+1200,6,sea,adventure,2.0,เกาะนางยวน
+300,2,temple,culture,0.7,พระบรมธาตุไชยา
+500,4,temple,culture,0.7,พระบรมธาตุไชยา
+200,3,temple,culture,0.8,สวนโมกขพลาราม
+100,2,temple,chill,0.8,สวนโมกขพลาราม
+500,4,mountain,chill,1.0,ป่าต้นน้ำ บ้านน้ำราด
+800,6,mountain,adventure,1.0,ป่าต้นน้ำ บ้านน้ำราด
+1200,6,mountain,adventure,1.8,อุทยานแห่งชาติเขาสก
+2500,24,mountain,adventure,1.8,อุทยานแห่งชาติเขาสก
+800,5,culture,chill,0.5,ชุมชนลีเล็ด
+1200,8,culture,chill,0.5,ชุมชนลีเล็ด
+600,3,local,chill,0.2,ล่องเรือคลองร้อยสาย
+300,2,local,social,0.1,ตลาดศาลเจ้า
+1500,6,adventure,adventure,1.8,ถ้ำน้ำทะลุ เขาสก
+1000,5,adventure,adventure,1.5,จุดชมวิวผาจันทร์จรัส
+300,2,relax,chill,1.0,สะพานแขวนเขาพัง
+400,3,relax,chill,0.5,น้ำพุร้อนท่าสะท้อน
+150,2,cafe,social,0.2,Lamphu Cafe (ลำภู คาเฟ่)
+250,3,cafe,social,0.3,The Roof Cafe Surat Thani
+200,2,cafe,social,0.3,Bus Cafe Surat Thani
+400,3,food,social,0.3,ร้านอาหารลักยิ้ม ริมน้ำ
+350,2,food,social,0.2,ร้านสมยศปากน้ำหอยพง
+500,3,food,social,0.5,ร้านอาหารเขาท่าเพชร

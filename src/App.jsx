@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from './apiConfig';
 import './App.css';
 import './Login.css';
 import LoginScreen from './components/LoginScreen';
@@ -98,22 +99,12 @@ function App() {
     if (currentScreen === 'home') {
       const fetchHomePlaces = async () => {
         try {
-          const response = await axios.get(`http://127.0.0.1:8000/get_home_places?pref=${lastPref || ''}`);
-          let places = [];
+          const response = await axios.get(`${API_BASE_URL}/get_home_places?pref=${lastPref || ''}`);
           if (response.data.status === 'success') {
-            places = response.data.places;
+            setHomePlaces(response.data.places);
           }
-          const merchantPlaces = JSON.parse(localStorage.getItem('merchantPlaces') || '[]');
-          if (merchantPlaces.length > 0) {
-            places = [...merchantPlaces, ...places];
-          }
-          setHomePlaces(places);
         } catch (error) {
           console.error("ดึงข้อมูลสถานที่ล้มเหลว", error);
-          const merchantPlaces = JSON.parse(localStorage.getItem('merchantPlaces') || '[]');
-          if (merchantPlaces.length > 0) {
-            setHomePlaces(merchantPlaces);
-          }
         }
       };
       fetchHomePlaces();
@@ -145,26 +136,22 @@ function App() {
     }
     setIsLoggingIn(true);
     try {
-      const lowerEmail = inputEmail.trim().toLowerCase();
-      const lowerName = inputName.trim().toLowerCase();
       const storedRole = localStorage.getItem('userRole');
 
-      // 🛡️ เช็คว่าเป็น Admin หรือไม่
-      if (lowerEmail.includes('admin') || lowerName.includes('admin') || storedRole === 'admin') {
-        localStorage.setItem('userName', inputName.trim());
-        localStorage.setItem('userEmail', inputEmail.trim());
-        localStorage.setItem('userRole', 'admin');
-        setCurrentScreen('admin');
+      const response = await axios.post(`${API_BASE_URL}/login_user`, { name: inputName.trim(), email: inputEmail.trim() });
+      if (response.data.status === 'name_mismatch') {
+        alert(response.data.message);
         setIsLoggingIn(false);
         return;
       }
 
-      const response = await axios.post('http://127.0.0.1:8000/login_user', { name: inputName.trim(), email: inputEmail.trim() });
-      if (response.data.status === 'name_mismatch') {
-        alert(response.data.message);
+      if (response.data.status === 'new_user') {
+        alert('ยังไม่พบบัญชีผู้ใช้งานนี้ในระบบ กรุณาลงทะเบียนก่อนเข้าใช้งานครับ');
+        setCurrentScreen('register');
         setIsLoggingIn(false);
-        return; 
+        return;
       }
+
       localStorage.setItem('userName', inputName.trim());
       localStorage.setItem('userEmail', inputEmail.trim());
 
@@ -173,29 +160,39 @@ function App() {
       } else if (response.data.status === 'returning_user') {
         localStorage.setItem('userPref', response.data.pref);
         setLastPref(response.data.pref);
-        setCurrentScreen('home'); 
-      } else {
-        setCurrentScreen('onboarding'); 
+        setCurrentScreen('home');
       }
     } catch (error) {
       // Fallback for offline / demo mode
-      const lowerEmail = inputEmail.trim().toLowerCase();
-      const lowerName = inputName.trim().toLowerCase();
       const storedRole = localStorage.getItem('userRole');
 
       localStorage.setItem('userName', inputName.trim());
       localStorage.setItem('userEmail', inputEmail.trim());
 
-      if (lowerEmail.includes('admin') || lowerName.includes('admin') || storedRole === 'admin') {
-        localStorage.setItem('userRole', 'admin');
-        setCurrentScreen('admin');
-      } else if (storedRole === 'business') {
+      if (storedRole === 'business') {
         setCurrentScreen('merchant-add-poi');
       } else {
         setCurrentScreen('home');
       }
     } finally {
       setIsLoggingIn(false);
+    }
+  };
+
+  const handleAdminLogin = async (email, password) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/login_admin`, { email, password });
+      if (response.data.status === 'success') {
+        localStorage.setItem('userName', 'ผู้ดูแลระบบ');
+        localStorage.setItem('userEmail', email.trim());
+        localStorage.setItem('userRole', 'admin');
+        sessionStorage.setItem('adminKey', password);
+        setCurrentScreen('admin');
+        return { success: true };
+      }
+      return { success: false, message: response.data.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' };
+    } catch (error) {
+      return { success: false, message: 'ไม่สามารถเชื่อมต่อระบบยืนยันตัวตนได้ กรุณาลองใหม่ภายหลัง' };
     }
   };
 
@@ -213,6 +210,7 @@ function App() {
 
   const handleLogout = () => {
     localStorage.clear();
+    sessionStorage.removeItem('adminKey');
     setInputName(''); setInputEmail(''); setOnboardingPrefs([]); setCurrentScreen('login');
   };
 
@@ -240,7 +238,7 @@ function App() {
     setLastPref(prefsString);
     setSelectedPrefs([...onboardingPrefs]); 
     try {
-      await axios.post('http://127.0.0.1:8000/save_user', { name: localStorage.getItem('userName'), email: localStorage.getItem('userEmail'), preferences: prefsString });
+      await axios.post(`${API_BASE_URL}/save_user`, { name: localStorage.getItem('userName'), email: localStorage.getItem('userEmail'), preferences: prefsString });
     } catch (error) {}
     setCurrentScreen('home');
   };
@@ -253,7 +251,7 @@ function App() {
     setIsLoading(true);
     setSelectedTripPlaces([]); // ล้างตะกร้าทริปเก่า
     try {
-      const response = await axios.post('http://127.0.0.1:8000/recommend', {
+      const response = await axios.post(`${API_BASE_URL}/recommend`, {
         budget: parseFloat(budget), time_hours: parseFloat(timeHours), categories: selectedPrefs, trip_mood: tripMoods.join(', '), user_lat: userLat, user_lng: userLng
       });
       if (response.data.status === 'success') {
@@ -377,19 +375,14 @@ function App() {
           theme={theme}
           toggleTheme={toggleTheme}
           onGoToRegister={() => setCurrentScreen('register')}
-          onGoToAdmin={() => {
-            setInputName('ผู้ดูแลระบบ');
-            setInputEmail('admin@surat.go.th');
-            localStorage.setItem('userName', 'ผู้ดูแลระบบ');
-            localStorage.setItem('userEmail', 'admin@surat.go.th');
-            localStorage.setItem('userRole', 'admin');
-            setCurrentScreen('admin');
-          }}
+          onAdminLogin={handleAdminLogin}
         />
       )}
 
       {currentScreen === 'register' && (
         <RegisterScreen
+          initialName={inputName}
+          initialEmail={inputEmail}
           theme={theme}
           toggleTheme={toggleTheme}
           onGoToLogin={() => setCurrentScreen('login')}

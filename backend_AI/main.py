@@ -1,4 +1,13 @@
-from fastapi import FastAPI
+import sys
+
+# Force UTF-8 stdout/stderr so Thai text and emoji in log messages never crash
+# the process on platforms whose default console codepage can't encode them
+# (e.g. Windows cp874/cp1252 terminals).
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import pandas as pd
@@ -31,16 +40,23 @@ try:
 except ImportError:
     pass
 
-MONGO_URI = os.getenv(
-    "MONGO_URI",
-    "mongodb+srv://sjunbowoi_db_user:t24xc97dMicYv7Fk@surat.ngxituu.mongodb.net/?appName=Surat"
-)
+MONGO_URI = os.getenv("MONGO_URI")
+if not MONGO_URI:
+    raise RuntimeError(
+        "MONGO_URI environment variable is not set. Copy backend_AI/.env.example to "
+        "backend_AI/.env and fill in your own MongoDB connection string."
+    )
+
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
+
 try:
     client = MongoClient(MONGO_URI)
     db = client["suratthani_tour"] 
-    users_collection = db["users_log"] 
-    places_collection = db["places"] 
-    dataset_collection = db["ai_dataset"] 
+    users_collection = db["users_log"]
+    places_collection = db["places"]
+    dataset_collection = db["ai_dataset"]
+    merchant_places_collection = db["merchant_places"]
     print("✅ [DB READY] เชื่อมต่อ MongoDB สำเร็จ!")
 except Exception as e:
     print(f"❌ [DB ERROR] เชื่อมต่อ MongoDB ล้มเหลว: {e}")
@@ -157,28 +173,110 @@ class LoginRequest(BaseModel):
     name: str
     email: str
 
+class AdminLoginRequest(BaseModel):
+    email: str
+    password: str
+
+class MerchantPlaceSubmission(BaseModel):
+    ownerEmail: str
+    ownerName: str = ""
+    businessName: str = ""
+    businessType: str = ""
+    businessLicense: str = ""
+    businessPhone: str = ""
+    name: str
+    tag: str = ""
+    location: str = ""
+    travelTime: str = ""
+    description: str = ""
+    lat: float = 0.0
+    lng: float = 0.0
+    image: str = ""
+    vr_image: str = ""
+
+class MerchantPlaceStatusUpdate(BaseModel):
+    status: str
+    reason: str = ""
+
+def verify_admin_key(x_admin_key: str = Header(None)):
+    if not ADMIN_PASSWORD or x_admin_key != ADMIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="ไม่ได้รับอนุญาต (Unauthorized)")
+
 # ==========================================
 # 🌐 API Endpoints
 # ==========================================
 
 @app.get("/get_home_places")
 def get_home_places(pref: str = None):
-    load_places_db() 
-    
+    load_places_db()
+    approved_merchant_places = list(merchant_places_collection.find({"status": "approved"}, {"_id": 0}))
+
     if pref:
         keywords = [CATEGORY_MAP[p] for p in pref.split(',') if p in CATEGORY_MAP]
         matched = [p for p in ATTRACTIONS_DB if any(k in str(p.get('tag', '')) for k in keywords)]
         unmatched = [p for p in ATTRACTIONS_DB if not any(k in str(p.get('tag', '')) for k in keywords)]
-        
+
         random.shuffle(matched)
         random.shuffle(unmatched)
-        
-        combined_places = matched + unmatched
+
+        combined_places = approved_merchant_places + matched + unmatched
         return {"status": "success", "places": combined_places}
-        
+
     shuffled_db = ATTRACTIONS_DB.copy()
     random.shuffle(shuffled_db)
-    return {"status": "success", "places": shuffled_db}
+    return {"status": "success", "places": approved_merchant_places + shuffled_db}
+
+# ==========================================
+# 🏪 ระบบร้านค้า (Merchant POI Submission & Moderation)
+# ==========================================
+
+@app.post("/merchant/places")
+def submit_merchant_place(place: MerchantPlaceSubmission):
+    doc = place.dict()
+    doc["id"] = "poi_" + str(int(datetime.now().timestamp() * 1000))
+    doc["status"] = "pending"
+    doc["rejectReason"] = ""
+    doc["registeredAt"] = datetime.now().strftime("%Y-%m-%d %H:%M น.")
+    merchant_places_collection.insert_one(doc)
+    doc.pop("_id", None)
+    return {"status": "success", "place": doc}
+
+@app.get("/merchant/places")
+def get_merchant_places(owner_email: str = None):
+    if not owner_email:
+        return {"status": "error", "message": "ต้องระบุ owner_email", "places": []}
+    items = list(
+        merchant_places_collection.find({"ownerEmail": owner_email}, {"_id": 0}).sort("registeredAt", -1)
+    )
+    return {"status": "success", "places": items}
+
+@app.get("/admin/merchant_places")
+def admin_list_merchant_places(x_admin_key: str = Header(None)):
+    verify_admin_key(x_admin_key)
+    items = list(merchant_places_collection.find({}, {"_id": 0}).sort("registeredAt", -1))
+    return {"status": "success", "places": items}
+
+@app.post("/admin/merchant_places/{place_id}/status")
+def admin_update_merchant_place_status(place_id: str, body: MerchantPlaceStatusUpdate, x_admin_key: str = Header(None)):
+    verify_admin_key(x_admin_key)
+    if body.status not in ("pending", "approved", "rejected"):
+        return {"status": "error", "message": "สถานะไม่ถูกต้อง"}
+    update_fields = {
+        "status": body.status,
+        "rejectReason": body.reason if body.status == "rejected" else "",
+    }
+    result = merchant_places_collection.update_one({"id": place_id}, {"$set": update_fields})
+    if result.matched_count == 0:
+        return {"status": "error", "message": "ไม่พบรายการนี้"}
+    return {"status": "success"}
+
+@app.post("/login_admin")
+def login_admin(req: AdminLoginRequest):
+    if not ADMIN_EMAIL or not ADMIN_PASSWORD:
+        return {"status": "error", "message": "ยังไม่ได้ตั้งค่าบัญชีผู้ดูแลระบบบนเซิร์ฟเวอร์ (ADMIN_EMAIL/ADMIN_PASSWORD)"}
+    if req.email.strip().lower() == ADMIN_EMAIL.strip().lower() and req.password == ADMIN_PASSWORD:
+        return {"status": "success"}
+    return {"status": "error", "message": "อีเมลหรือรหัสผ่านไม่ถูกต้อง"}
 
 @app.post("/login_user")
 def login_user(req: LoginRequest):

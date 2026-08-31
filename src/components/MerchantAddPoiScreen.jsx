@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { API_BASE_URL } from '../apiConfig';
 import ThemeToggleBtn from './ThemeToggleBtn';
 
 export default function MerchantAddPoiScreen({
@@ -11,6 +13,8 @@ export default function MerchantAddPoiScreen({
   const userData = userDataRaw ? JSON.parse(userDataRaw) : {};
   const businessNameInitial = userData.businessName || 'คาเฟ่ริมหาด สมุย ซันเซ็ท';
   const businessTypeInitial = userData.businessType || 'cafe';
+  const ownerEmail = localStorage.getItem('userEmail') || '';
+  const ownerName = localStorage.getItem('userName') || '';
 
   const [activeTab, setActiveTab] = useState('manage-poi'); // 'manage-poi' | 'dashboard' | 'vr-assets'
   const [placeName, setPlaceName] = useState(businessNameInitial);
@@ -35,6 +39,30 @@ export default function MerchantAddPoiScreen({
   const [gpsLoading, setGpsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [myStatus, setMyStatus] = useState(null); // null (still checking) | 'pending' | 'approved' | 'rejected'
+  const [myRejectReason, setMyRejectReason] = useState('');
+
+  useEffect(() => {
+    const fetchMyStatus = async () => {
+      if (!ownerEmail) return;
+      try {
+        const response = await axios.get(`${API_BASE_URL}/merchant/places`, {
+          params: { owner_email: ownerEmail },
+        });
+        if (response.data.status === 'success' && response.data.places.length > 0) {
+          const latest = response.data.places[0];
+          setMyStatus(latest.status);
+          setMyRejectReason(latest.rejectReason || '');
+        } else {
+          setMyStatus('none');
+        }
+      } catch (error) {
+        setMyStatus('none');
+      }
+    };
+    fetchMyStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Business Analytics Mock Data
   const merchantStats = {
@@ -73,8 +101,13 @@ export default function MerchantAddPoiScreen({
 
     setIsSaving(true);
     try {
-      const newPlace = {
-        id: 'poi_' + Date.now(),
+      const payload = {
+        ownerEmail,
+        ownerName,
+        businessName: placeName.trim(),
+        businessType: businessTypeInitial,
+        businessLicense: userData.businessLicense || '',
+        businessPhone: userData.businessPhone || '',
         name: placeName.trim(),
         tag: tag,
         location: district,
@@ -86,18 +119,18 @@ export default function MerchantAddPoiScreen({
         vr_image: vrImageUrl || '/vr_images/clocktower.jpg',
       };
 
-      // Store in local storage to augment home places
-      const existingCustom = JSON.parse(localStorage.getItem('merchantPlaces') || '[]');
-      existingCustom.unshift(newPlace);
-      localStorage.setItem('merchantPlaces', JSON.stringify(existingCustom));
-
-      setTimeout(() => {
-        setIsSaving(false);
+      const response = await axios.post(`${API_BASE_URL}/merchant/places`, payload);
+      if (response.data.status === 'success') {
+        setMyStatus('pending');
+        setMyRejectReason('');
         setSavedSuccess(true);
-      }, 600);
+      } else {
+        alert(response.data.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      }
     } catch (err) {
+      alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่ภายหลัง');
+    } finally {
       setIsSaving(false);
-      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
     }
   };
 
@@ -136,17 +169,30 @@ export default function MerchantAddPoiScreen({
         {/* ================= VERIFICATION STATUS BANNER ================= */}
         <div className="merchant-status-banner">
           <div className="status-banner-left">
-            <span className="status-badge-pending">
-              <span className="pulse-dot" /> รอการอนุมัติ (Pending Verification)
-            </span>
+            {myStatus === 'approved' ? (
+              <span className="status-pill status-approved">✓ อนุมัติแล้ว (Approved)</span>
+            ) : myStatus === 'rejected' ? (
+              <span className="status-pill status-rejected">✕ ถูกปฏิเสธ (Rejected)</span>
+            ) : (
+              <span className="status-badge-pending">
+                <span className="pulse-dot" /> รอการอนุมัติ (Pending Verification)
+              </span>
+            )}
             <p className="status-banner-desc">
-              ระบบได้รับเอกสารและข้อมูลร้าน <b>"{placeName}"</b> แล้ว
-              ทีมงานผู้ดูแลระบบกำลังตรวจสอบเอกสาร DBD เพื่อเปิดใช้งานการแสดงผลอย่างเป็นทางการ
+              {myStatus === 'approved' && (
+                <>ร้าน <b>"{placeName}"</b> ผ่านการตรวจสอบแล้ว และแสดงผลบนหน้าแรกให้นักท่องเที่ยวเห็นแล้วครับ</>
+              )}
+              {myStatus === 'rejected' && (
+                <>คำขอของร้าน <b>"{placeName}"</b> ถูกปฏิเสธ เหตุผล: {myRejectReason || 'ไม่ระบุ'} กรุณาแก้ไขข้อมูลแล้วส่งใหม่อีกครั้ง</>
+              )}
+              {(myStatus === 'pending' || myStatus === 'none' || myStatus === null) && (
+                <>ระบบได้รับข้อมูลร้าน <b>"{placeName}"</b> แล้ว
+                ทีมงานผู้ดูแลระบบกำลังตรวจสอบข้อมูลเพื่อเปิดใช้งานการแสดงผลอย่างเป็นทางการ</>
+              )}
             </p>
           </div>
           <div className="status-banner-meta">
-            <span>เลขทะเบียน: {userData.businessLicense || '0845564001234'}</span>
-            <span>สถานะเอกสาร: แนบเรียบร้อย ✓</span>
+            <span>เลขทะเบียน: {userData.businessLicense || '-'}</span>
           </div>
         </div>
 
@@ -187,9 +233,9 @@ export default function MerchantAddPoiScreen({
               <div className="merchant-success-box">
                 <span className="success-icon">🎉</span>
                 <div>
-                  <h4 className="success-title">บันทึกข้อมูลสถานที่เรียบร้อยแล้ว!</h4>
+                  <h4 className="success-title">ส่งข้อมูลสถานที่เรียบร้อยแล้ว!</h4>
                   <p className="success-desc">
-                    ข้อมูลสถานที่ของคุณพร้อมให้แสดงผลและให้ AI นำไปจัดทริปแล้วครับ
+                    ข้อมูลสถานที่ของคุณถูกส่งให้ผู้ดูแลระบบตรวจสอบแล้ว เมื่อได้รับการอนุมัติจะแสดงผลให้นักท่องเที่ยวเห็นทันที
                   </p>
                 </div>
               </div>

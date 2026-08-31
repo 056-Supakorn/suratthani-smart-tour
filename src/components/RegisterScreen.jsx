@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../apiConfig';
 
 export default function RegisterScreen({
   theme,
@@ -7,13 +8,15 @@ export default function RegisterScreen({
   onGoToLogin,
   onRegisterTouristSuccess,
   onRegisterBusinessSuccess,
+  initialName = '',
+  initialEmail = '',
 }) {
   // Role switcher: 'tourist' | 'business'
   const [role, setRole] = useState('tourist');
 
   // Common form fields
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState(initialName);
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -105,7 +108,7 @@ export default function RegisterScreen({
 
       // Attempt to save to backend if available
       try {
-        await axios.post('http://127.0.0.1:8000/save_user', {
+        await axios.post(`${API_BASE_URL}/save_user`, {
           name: fullName.trim(),
           email: email.trim(),
           preferences: role === 'tourist' ? `age:${age},gender:${gender}` : `business:${businessType}`,

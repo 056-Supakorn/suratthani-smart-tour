@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { API_BASE_URL, getAdminHeaders } from '../apiConfig';
 import ThemeToggleBtn from './ThemeToggleBtn';
 
 export default function AdminScreen({
@@ -9,69 +11,49 @@ export default function AdminScreen({
 }) {
   const [activeTab, setActiveTab] = useState('moderation'); // 'moderation' | 'pois' | 'vr-assets' | 'users' | 'dashboard'
 
-  // Sample pending and approved merchants list (stored in localStorage)
-  const initialMerchants = [
-    {
-      id: 'm1',
-      businessName: 'คาเฟ่ริมหาด สมุย ซันเซ็ท',
-      ownerName: 'สมชาย เจริญกิจ',
-      email: 'samui.sunset@email.com',
-      phone: '081-234-5678',
-      businessType: 'คาเฟ่ & เบเกอรี่',
-      licenseId: '0845564001234',
-      docName: 'DBD_Certificate_2026.pdf',
-      registeredAt: '2026-08-31 14:20 น.',
-      status: 'pending',
-    },
-    {
-      id: 'm2',
-      businessName: 'ร้านอาหารพื้นบ้าน ปากน้ำตาปี ซีฟู้ด',
-      ownerName: 'วิภาดา รักษาเกียรติ',
-      email: 'tapi.seafood@email.com',
-      phone: '089-876-5432',
-      businessType: 'ร้านอาหารพื้นบ้าน / ซีฟู้ด',
-      licenseId: '0845565009876',
-      docName: 'Commercial_Registration.pdf',
-      registeredAt: '2026-08-31 11:45 น.',
-      status: 'pending',
-    },
-    {
-      id: 'm3',
-      businessName: 'โฮมสเตย์ล่องเรือคลองร้อยสาย',
-      ownerName: 'ประสิทธิ์ ทองมี',
-      email: 'khlong.roisai@email.com',
-      phone: '086-555-1234',
-      businessType: 'แหล่งท่องเที่ยวชุมชน',
-      licenseId: '0845566005544',
-      docName: 'Community_Tourism_Permit.pdf',
-      registeredAt: '2026-08-30 16:10 น.',
-      status: 'approved',
-    },
-    {
-      id: 'm4',
-      businessName: 'เชี่ยวหลาน เลค รีสอร์ท แอนด์ ราฟต์',
-      ownerName: 'กิตติศักดิ์ พรหมมินทร์',
-      email: 'chiewlan.raft@email.com',
-      phone: '077-999-888',
-      businessType: 'โรงแรม & รีสอร์ท',
-      licenseId: '0845563007788',
-      docName: 'Hotel_License_2026.pdf',
-      registeredAt: '2026-08-29 09:30 น.',
-      status: 'approved',
-    },
-  ];
+  const [merchants, setMerchants] = useState([]);
+  const [isLoadingMerchants, setIsLoadingMerchants] = useState(true);
+  const [merchantsError, setMerchantsError] = useState('');
 
-  const [merchants, setMerchants] = useState(() => {
-    const saved = localStorage.getItem('adminMerchantsList');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return initialMerchants;
+  const loadMerchants = async () => {
+    setIsLoadingMerchants(true);
+    setMerchantsError('');
+    try {
+      const response = await axios.get(`${API_BASE_URL}/admin/merchant_places`, {
+        headers: getAdminHeaders(),
+      });
+      if (response.data.status === 'success') {
+        setMerchants(response.data.places);
       }
+    } catch (error) {
+      setMerchantsError('ไม่สามารถโหลดรายชื่อผู้ประกอบการได้ กรุณาตรวจสอบการเชื่อมต่อหรือสิทธิ์ผู้ดูแลระบบ');
+    } finally {
+      setIsLoadingMerchants(false);
     }
-    return initialMerchants;
-  });
+  };
+
+  useEffect(() => {
+    loadMerchants();
+  }, []);
+
+  const updateMerchantStatus = async (id, status, reason = '') => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/admin/merchant_places/${id}/status`,
+        { status, reason },
+        { headers: getAdminHeaders() }
+      );
+      if (response.data.status === 'success') {
+        setMerchants((prev) =>
+          prev.map((m) => (m.id === id ? { ...m, status, rejectReason: reason } : m))
+        );
+      } else {
+        alert(response.data.message || 'เกิดข้อผิดพลาดในการอัปเดตสถานะ');
+      }
+    } catch (error) {
+      alert('ไม่สามารถอัปเดตสถานะได้ กรุณาลองใหม่อีกครั้ง');
+    }
+  };
 
   // Sample Users list
   const [usersList, setUsersList] = useState([
@@ -81,23 +63,15 @@ export default function AdminScreen({
     { id: 'u4', name: 'วิภาดา รักษาเกียรติ', email: 'tapi.seafood@email.com', role: 'business', status: 'pending', tripsCreated: 0 },
   ]);
 
-  const handleApprove = (id) => {
-    const updated = merchants.map((m) =>
-      m.id === id ? { ...m, status: 'approved' } : m
-    );
-    setMerchants(updated);
-    localStorage.setItem('adminMerchantsList', JSON.stringify(updated));
+  const handleApprove = async (id) => {
+    await updateMerchantStatus(id, 'approved');
     alert('✅ อนุมัติผู้ประกอบการเรียบร้อยแล้ว! ข้อมูลร้านจะแสดงผลในระบบแนะนำทันที');
   };
 
-  const handleReject = (id) => {
+  const handleReject = async (id) => {
     const reason = prompt('กรุณาระบุเหตุผลในการปฏิเสธ (เช่น เอกสารไม่ชัดเจน):', 'เอกสารใบอนุญาตไม่ครบถ้วน');
     if (reason !== null) {
-      const updated = merchants.map((m) =>
-        m.id === id ? { ...m, status: 'rejected', rejectReason: reason } : m
-      );
-      setMerchants(updated);
-      localStorage.setItem('adminMerchantsList', JSON.stringify(updated));
+      await updateMerchantStatus(id, 'rejected', reason);
       alert('❌ ปฏิเสธคำขอเรียบร้อยแล้ว');
     }
   };
@@ -239,9 +213,21 @@ export default function AdminScreen({
               <div className="table-filter-pills">
                 <span className="filter-badge approved">อนุมัติแล้ว: {approvedCount}</span>
                 <span className="filter-badge pending">รอตรวจสอบ: {pendingCount}</span>
+                <button type="button" className="btn-recheck-action" onClick={loadMerchants}>
+                  🔄 รีเฟรช
+                </button>
               </div>
             </div>
 
+            {merchantsError && (
+              <p style={{ color: '#dc2626', fontSize: '13px', margin: '0 0 12px 0' }}>{merchantsError}</p>
+            )}
+
+            {isLoadingMerchants ? (
+              <p style={{ fontSize: '13px', color: '#64748b' }}>กำลังโหลดข้อมูล...</p>
+            ) : merchants.length === 0 ? (
+              <p style={{ fontSize: '13px', color: '#64748b' }}>ยังไม่มีคำขอเปิดร้านค้าเข้ามาในระบบ</p>
+            ) : (
             <div className="admin-table-container">
               <table className="admin-custom-table">
                 <thead>
@@ -249,7 +235,7 @@ export default function AdminScreen({
                     <th>สถานประกอบการ / ชื่อร้าน</th>
                     <th>เจ้าของร้าน / ผู้ติดต่อ</th>
                     <th>ประเภทธุรกิจ</th>
-                    <th>เอกสาร / เลขทะเบียนพาณิชย์</th>
+                    <th>เลขทะเบียน / ใบอนุญาต</th>
                     <th>เวลาที่ลงทะเบียน</th>
                     <th>สถานะ</th>
                     <th style={{ textAlign: 'center' }}>การดำเนินการ</th>
@@ -260,26 +246,21 @@ export default function AdminScreen({
                     <tr key={merchant.id}>
                       <td>
                         <div className="merchant-name-cell">
-                          <span className="merchant-shop-name">{merchant.businessName}</span>
-                          <span className="merchant-shop-phone">📞 {merchant.phone}</span>
+                          <span className="merchant-shop-name">{merchant.businessName || merchant.name}</span>
+                          <span className="merchant-shop-phone">📞 {merchant.businessPhone || '-'}</span>
                         </div>
                       </td>
                       <td>
                         <div className="merchant-owner-cell">
-                          <span className="owner-name">{merchant.ownerName}</span>
-                          <span className="owner-email">{merchant.email}</span>
+                          <span className="owner-name">{merchant.ownerName || '-'}</span>
+                          <span className="owner-email">{merchant.ownerEmail}</span>
                         </div>
                       </td>
                       <td>
-                        <span className="business-type-tag">{merchant.businessType}</span>
+                        <span className="business-type-tag">{merchant.businessType || merchant.tag}</span>
                       </td>
                       <td>
-                        <div className="license-doc-cell">
-                          <span className="license-id">ID: {merchant.licenseId}</span>
-                          <span className="doc-link-btn" onClick={() => alert(`เปิดเอกสารตรวจสอบ: ${merchant.docName}`)}>
-                            📄 {merchant.docName}
-                          </span>
-                        </div>
+                        <span className="license-id">{merchant.businessLicense || 'ไม่ระบุ'}</span>
                       </td>
                       <td>
                         <span className="registered-time">{merchant.registeredAt}</span>
@@ -296,7 +277,7 @@ export default function AdminScreen({
                           </span>
                         )}
                         {merchant.status === 'rejected' && (
-                          <span className="status-pill status-rejected">
+                          <span className="status-pill status-rejected" title={merchant.rejectReason}>
                             ✕ ปฏิเสธ
                           </span>
                         )}
@@ -326,14 +307,12 @@ export default function AdminScreen({
                             <button
                               type="button"
                               className="btn-recheck-action"
-                              onClick={() => {
-                                const newStatus = merchant.status === 'approved' ? 'pending' : 'approved';
-                                const updated = merchants.map((m) =>
-                                  m.id === merchant.id ? { ...m, status: newStatus } : m
-                                );
-                                setMerchants(updated);
-                                localStorage.setItem('adminMerchantsList', JSON.stringify(updated));
-                              }}
+                              onClick={() =>
+                                updateMerchantStatus(
+                                  merchant.id,
+                                  merchant.status === 'approved' ? 'pending' : 'approved'
+                                )
+                              }
                             >
                               🔄 สลับสถานะ
                             </button>
@@ -345,6 +324,7 @@ export default function AdminScreen({
                 </tbody>
               </table>
             </div>
+            )}
           </section>
         )}
 

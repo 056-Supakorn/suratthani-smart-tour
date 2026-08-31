@@ -10,9 +10,26 @@ export default function LoginScreen({
   theme,
   toggleTheme,
   onGoToRegister,
-  onGoToAdmin,
+  onAdminLogin,
 }) {
   const [rememberMe, setRememberMe] = useState(true);
+  const [showAdminForm, setShowAdminForm] = useState(false);
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminError, setAdminError] = useState('');
+  const [isAdminSubmitting, setIsAdminSubmitting] = useState(false);
+
+  const handleAdminSubmit = async (e) => {
+    e.preventDefault();
+    if (!adminEmail.trim() || !adminPassword.trim()) return;
+    setIsAdminSubmitting(true);
+    setAdminError('');
+    const result = await onAdminLogin(adminEmail.trim(), adminPassword);
+    setIsAdminSubmitting(false);
+    if (!result.success) {
+      setAdminError(result.message || 'เข้าสู่ระบบไม่สำเร็จ');
+    }
+  };
 
   const handleSubmit = (e) => {
     e && e.preventDefault && e.preventDefault();
@@ -230,12 +247,12 @@ export default function LoginScreen({
             <span>ข้อมูลของคุณปลอดภัยและถูกเก็บเป็นความลับ</span>
           </div>
 
-          {/* Admin Portal Entry Link */}
-          {onGoToAdmin && (
+          {/* Admin Portal Entry */}
+          {onAdminLogin && (
             <div className="login-admin-footer-link" style={{ marginTop: '12px', textAlign: 'center' }}>
               <button
                 type="button"
-                onClick={onGoToAdmin}
+                onClick={() => { setShowAdminForm((v) => !v); setAdminError(''); }}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -253,6 +270,50 @@ export default function LoginScreen({
               >
                 🛡️ เข้าสู่ระบบผู้ดูแลระบบ (Admin Portal)
               </button>
+
+              {showAdminForm && (
+                <form
+                  onSubmit={handleAdminSubmit}
+                  style={{
+                    marginTop: '10px',
+                    padding: '14px',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    textAlign: 'left',
+                  }}
+                >
+                  <input
+                    type="email"
+                    placeholder="อีเมลผู้ดูแลระบบ"
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    className="login-text-input"
+                    required
+                  />
+                  <input
+                    type="password"
+                    placeholder="รหัสผ่านผู้ดูแลระบบ"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    className="login-text-input"
+                    required
+                  />
+                  {adminError && (
+                    <span style={{ color: '#dc2626', fontSize: '12px' }}>{adminError}</span>
+                  )}
+                  <button
+                    type="submit"
+                    className="login-primary-submit-btn"
+                    disabled={isAdminSubmitting}
+                    style={{ marginTop: '4px' }}
+                  >
+                    <span>{isAdminSubmitting ? 'กำลังตรวจสอบ...' : 'เข้าสู่ระบบผู้ดูแลระบบ'}</span>
+                  </button>
+                </form>
+              )}
             </div>
           )}
         </div>

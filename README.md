@@ -62,7 +62,7 @@ venv\Scripts\activate  # บน Windows
 # source venv/bin/activate  # บน macOS/Linux
 
 # ติดตั้ง dependencies
-pip install fastapi uvicorn pandas scikit-learn pymongo python-dotenv
+pip install -r requirements.txt
 
 # คัดลอกไฟล์ Environment Variables
 cp .env.example .env

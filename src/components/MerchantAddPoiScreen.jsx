@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ThemeToggleBtn from './ThemeToggleBtn';
 
 export default function MerchantAddPoiScreen({
   theme,
@@ -113,14 +114,7 @@ export default function MerchantAddPoiScreen({
         </div>
 
         <div className="merchant-header-actions">
-          <button
-            type="button"
-            className="merchant-theme-btn"
-            onClick={toggleTheme}
-            title="สลับโหมดสว่าง/มืด"
-          >
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
+          <ThemeToggleBtn theme={theme} toggleTheme={toggleTheme} />
           <button
             type="button"
             className="merchant-tourist-view-btn"

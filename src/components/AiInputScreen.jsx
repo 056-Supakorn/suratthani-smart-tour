@@ -1,4 +1,5 @@
 import React from 'react';
+import ThemeToggleBtn from './ThemeToggleBtn';
 
 export default function AiInputScreen({
   categories,
@@ -56,14 +57,7 @@ export default function AiInputScreen({
           >
             <span>← กลับหน้าหลัก</span>
           </button>
-          <button
-            type="button"
-            className="home-theme-toggle-btn"
-            onClick={toggleTheme}
-            title="สลับโหมด"
-          >
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
+          <ThemeToggleBtn theme={theme} toggleTheme={toggleTheme} />
         </div>
       </header>
 

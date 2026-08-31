@@ -1,4 +1,5 @@
 import React from 'react';
+import ThemeToggleBtn from './ThemeToggleBtn';
 
 export default function AiResultScreen({
   aiRoute,
@@ -83,14 +84,7 @@ export default function AiResultScreen({
           >
             <span>🔍 ค้นหาเงื่อนไขใหม่</span>
           </button>
-          <button
-            type="button"
-            className="home-theme-toggle-btn"
-            onClick={toggleTheme}
-            title="สลับโหมด"
-          >
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
+          <ThemeToggleBtn theme={theme} toggleTheme={toggleTheme} />
         </div>
       </header>
 

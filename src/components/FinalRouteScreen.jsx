@@ -1,4 +1,5 @@
 import React from 'react';
+import ThemeToggleBtn from './ThemeToggleBtn';
 
 export default function FinalRouteScreen({
   finalRoutePlan,
@@ -42,14 +43,7 @@ export default function FinalRouteScreen({
           >
             <span>← ปรับแต่งสถานที่</span>
           </button>
-          <button
-            type="button"
-            className="home-theme-toggle-btn"
-            onClick={toggleTheme}
-            title="สลับโหมด"
-          >
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
+          <ThemeToggleBtn theme={theme} toggleTheme={toggleTheme} />
         </div>
       </header>
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ThemeToggleBtn from './ThemeToggleBtn';
 
 export default function AdminScreen({
   theme,
@@ -127,14 +128,7 @@ export default function AdminScreen({
         </div>
 
         <div className="admin-header-actions">
-          <button
-            type="button"
-            className="admin-theme-btn"
-            onClick={toggleTheme}
-            title="สลับโหมดสว่าง/มืด"
-          >
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
+          <ThemeToggleBtn theme={theme} toggleTheme={toggleTheme} />
           <button
             type="button"
             className="admin-tourist-view-btn"

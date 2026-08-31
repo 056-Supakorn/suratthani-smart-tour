@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ThemeToggleBtn from './ThemeToggleBtn';
 
 export default function SearchResultsScreen({
   searchQuery,

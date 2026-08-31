@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ThemeToggleBtn from './ThemeToggleBtn';
 
 export default function DetailScreen({
   selectedAttraction,
@@ -47,14 +48,7 @@ export default function DetailScreen({
           >
             <span>← ย้อนกลับ</span>
           </button>
-          <button
-            type="button"
-            className="home-theme-toggle-btn"
-            onClick={toggleTheme}
-            title="สลับโหมด"
-          >
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
+          <ThemeToggleBtn theme={theme} toggleTheme={toggleTheme} />
         </div>
       </header>
 

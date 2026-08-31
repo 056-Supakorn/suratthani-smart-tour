@@ -8,6 +8,11 @@ import MerchantAddPoiScreen from './components/MerchantAddPoiScreen';
 import OnboardingScreen from './components/OnboardingScreen';
 import HomeScreen from './components/HomeScreen';
 import AdminScreen from './components/AdminScreen';
+import SearchResultsScreen from './components/SearchResultsScreen';
+import AiInputScreen from './components/AiInputScreen';
+import AiResultScreen from './components/AiResultScreen';
+import FinalRouteScreen from './components/FinalRouteScreen';
+import DetailScreen from './components/DetailScreen';
 
 // หมวดหมู่สถานที่
 const categories = [
@@ -518,296 +523,88 @@ function App() {
       )}
 
       {currentScreen === 'search-results' && (
-        <div className="home-container fade-in">
-          <div className="content-wrapper" style={{ margin: '0 auto', maxWidth: '1000px', paddingTop: '30px' }}>
-            <div style={{ marginBottom: '25px', textAlign: 'center' }}>
-              <h2 style={{ fontSize: '24px', margin: 0, color: textMain }}>🔍 ค้นหาสถานที่</h2>
-            </div>
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '35px', backgroundColor: bgSummary, padding: '20px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
-              <div style={{ flex: 1, margin: 0, position: 'relative' }}>
-                <span style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', fontSize: '18px' }}>🔍</span>
-                <input 
-                  type="text" placeholder="ค้นหาสถานที่, อำเภอ หรือหมวดหมู่..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ width: '100%', padding: '15px 15px 15px 45px', borderRadius: '12px', border: `1px solid ${theme === 'dark' ? '#444' : '#ccc'}`, backgroundColor: theme === 'dark' ? '#121212' : '#f9f9f9', color: textMain, fontSize: '16px', boxSizing: 'border-box', outline: 'none' }}
-                />
-              </div>
-              <button 
-                style={{ backgroundColor: '#4285F4', color: 'white', border: 'none', borderRadius: '12px', padding: '0 24px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(66, 133, 244, 0.3)', transition: 'transform 0.2s' }}
-              >
-                ค้นหา
-              </button>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: `2px solid ${theme === 'dark' ? '#333' : '#eee'}`, paddingBottom: '15px' }}>
-              <h2 style={{ fontSize: '20px', margin: 0, color: textMain }}>ผลการค้นหาสำหรับ: <span style={{ color: '#1DB954' }}>"{searchQuery}"</span></h2>
-              <span style={{ backgroundColor: theme === 'dark' ? '#333' : '#e0e0e0', padding: '5px 15px', borderRadius: '20px', fontSize: '14px', color: textMain, fontWeight: 'bold' }}>พบ {filteredPlaces.length} รายการ</span>
-            </div>
-            <div className="attraction-grid">
-              {filteredPlaces.length > 0 ? (
-                filteredPlaces.map(place => (
-                  <div key={place.id} className="attraction-card" style={{ cursor: 'pointer' }} onClick={() => handleViewDetail(place, 'search-results')}>
-                    <img src={place.image} alt={place.name} className="attraction-img" style={{ backgroundColor: '#e2e8f0' }} onError={(e) => { e.target.onerror = null; e.target.src = ''; }} />
-                    <div style={{ padding: '20px' }}>
-                      <span className="tag">{place.tag}</span>
-                      <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', color: textMain }}>{place.name}</h3>
-                      <p style={{ fontSize: '12px', color: textMuted, margin: '0 0 15px 0' }}>📍 {place.location}</p>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button className="btn" style={{ backgroundColor: '#1DB954', color: 'white', padding: '10px', fontSize: '13px', flex: 1, borderRadius: '12px', border: 'none' }}>รายละเอียด</button>
-                        <button className="btn" onClick={(e) => { e.stopPropagation(); openVRMode(place); }} style={{ backgroundColor: '#333', color: 'white', padding: '10px', fontSize: '13px', flex: 1, borderRadius: '12px', border: 'none' }}>🕶️ VR 360°</button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div style={{ textAlign: 'center', width: '100%', padding: '60px 0', backgroundColor: bgSummary, borderRadius: '20px', marginTop: '20px' }}>
-                  <span style={{ fontSize: '40px', display: 'block', marginBottom: '15px' }}>🧐</span>
-                  <h3 style={{ color: textMain, margin: '0 0 10px 0' }}>ไม่พบสถานที่ที่คุณค้นหา</h3>
-                  <p style={{ color: textMuted, margin: 0 }}>ลองค้นหาด้วยคำอื่น เช่น ชื่ออำเภอ, ชื่อสถานที่ หรือหมวดหมู่</p>
-                </div>
-              )}
-            </div>
-            <button 
-              className="btn btn-outline" onClick={() => { setSearchQuery(''); setCurrentScreen('home'); }} 
-              style={{ width: '100%', marginTop: '30px', padding: '16px', fontSize: '16px', borderRadius: '20px', border: `2px solid ${textMuted}`, color: textMain, backgroundColor: 'transparent', cursor: 'pointer' }}
-            >
-              ← กลับหน้าแรก
-            </button>
-          </div>
-        </div>
+        <SearchResultsScreen
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          filteredPlaces={filteredPlaces}
+          onSearch={() => {
+            if (searchQuery.trim() !== '') setCurrentScreen('search-results');
+          }}
+          onViewDetail={handleViewDetail}
+          onOpenVR={openVRMode}
+          onBackToHome={() => {
+            setSearchQuery('');
+            setCurrentScreen('home');
+          }}
+          onLogout={handleLogout}
+          onReturnToRolePortal={(role) => {
+            if (role === 'admin') setCurrentScreen('admin');
+            else if (role === 'business') setCurrentScreen('merchant-add-poi');
+          }}
+          theme={theme}
+          toggleTheme={toggleTheme}
+        />
       )}
 
       {currentScreen === 'ai-input' && (
-        <div className="app-container fade-in">
-          <div className="content-wrapper">
-            <h1 style={{ fontSize: '30px', marginBottom: '10px', color: textMain }}>ให้ฉันช่วยแนะนำคุณ 🤖</h1>
-            <p style={{ color: textMuted, marginBottom: '30px' }}>เลือกสไตล์ที่ชอบ (เลือกได้หลายอัน) และระบุข้อมูลการเดินทาง</p>
-            <div className="pref-grid">
-              {categories.map((item) => (
-                <div key={item.id} className="card" onClick={() => toggleSelection(item.id)}
-                  style={{ backgroundColor: selectedPrefs.includes(item.id) ? '#1DB954' : bgCard, color: selectedPrefs.includes(item.id) ? 'white' : textMuted, border: `2px solid ${selectedPrefs.includes(item.id) ? '#1ed760' : (theme === 'dark' ? 'transparent' : '#ddd')}`, cursor: 'pointer' }}>
-                  {item.label}
-                </div>
-              ))}
-            </div>
-            <div style={{ marginTop: '35px' }}>
-              <label className="ai-input-label" style={{ color: textMuted, marginBottom: '15px' }}>✨ สไตล์บรรยากาศของทริปนี้ (เลือกได้หลายอัน)</label>
-              <div className="pref-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
-                {moodOptions.map((mood) => (
-                  <div key={mood.id} className="card" onClick={() => toggleMoodSelection(mood.id)}
-                    style={{ backgroundColor: tripMoods.includes(mood.id) ? '#4285F4' : bgCard, color: tripMoods.includes(mood.id) ? 'white' : textMuted, border: `2px solid ${tripMoods.includes(mood.id) ? '#3367d6' : (theme === 'dark' ? '#333' : '#ccc')}`, cursor: 'pointer', padding: '15px 10px' }}>
-                    {mood.label}
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div style={{ backgroundColor: bgCard, padding: '20px', borderRadius: '15px', marginTop: '30px', border: `2px dashed ${theme === 'dark' ? '#444' : '#1DB954'}` }}>
-              <h3 style={{ color: textMain, margin: '0 0 10px 0', fontSize: '18px' }}>📍 จัดเรียงเส้นทางจากจุดที่คุณอยู่</h3>
-              <p style={{ fontSize: '13px', color: textMuted, marginBottom: '15px' }}>อนุญาตให้ระบบเข้าถึงตำแหน่ง เพื่อให้ระบบคำนวณว่าคุณควรไปจุดไหนก่อน</p>
-              <button onClick={getLocation} style={{ background: '#4285F4', color: 'white', padding: '12px 20px', border: 'none', borderRadius: '10px', width: '100%', fontWeight: 'bold', cursor: 'pointer' }}>ดึงตำแหน่งพิกัดปัจจุบัน</button>
-              {gpsStatus && <p style={{ color: gpsStatus.includes('❌') ? '#ff4444' : '#1DB954', fontSize: '14px', marginTop: '10px', fontWeight: 'bold', textAlign: 'center' }}>{gpsStatus}</p>}
-            </div>
-            <div className="ai-input-container" style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', marginTop: '20px' }}>
-              <div style={{ flex: 1, textAlign: 'left' }}>
-                <label className="ai-input-label" style={{ display: 'block', marginBottom: '8px', color: textMuted }}>💰 งบประมาณ (บาท)</label>
-                <input type="number" className="ai-input" placeholder="เช่น 1500" value={budget} onChange={(e) => setBudget(e.target.value)} style={{ width: '100%', padding: '15px', borderRadius: '12px', boxSizing: 'border-box', backgroundColor: bgCard, color: textMain, border: `2px solid ${theme === 'dark' ? '#333' : '#ddd'}` }} />
-              </div>
-              <div style={{ flex: 1, textAlign: 'left' }}>
-                <label className="ai-input-label" style={{ display: 'block', marginBottom: '8px', color: textMuted }}>⏱️ เวลาที่มี (ชั่วโมง)</label>
-                <input type="number" className="ai-input" placeholder="เช่น 6" value={timeHours} onChange={(e) => setTimeHours(e.target.value)} style={{ width: '100%', padding: '15px', borderRadius: '12px', boxSizing: 'border-box', backgroundColor: bgCard, color: textMain, border: `2px solid ${theme === 'dark' ? '#333' : '#ddd'}` }} />
-              </div>
-            </div>
-            <button className={`btn ${selectedPrefs.length > 0 && tripMoods.length > 0 && budget && timeHours ? 'btn-primary' : 'btn-disabled'}`} onClick={handleProcessAI} disabled={selectedPrefs.length === 0 || tripMoods.length === 0 || !budget || !timeHours || isLoading} style={{ width: '100%', padding: '15px', fontSize: '16px', marginTop: '20px' }}>
-              {isLoading ? 'กำลังวิเคราะห์ข้อมูล...' : 'เริ่มประมวลผลค้นหาสถานที่'}
-            </button>
-            <button className="btn btn-outline" style={{ width: '100%', marginTop: '10px' }} onClick={() => setCurrentScreen('home')}>ยกเลิกและกลับหน้าหลัก</button>
-          </div>
-        </div>
+        <AiInputScreen
+          categories={categories}
+          selectedPrefs={selectedPrefs}
+          toggleSelection={toggleSelection}
+          moodOptions={moodOptions}
+          tripMoods={tripMoods}
+          toggleMoodSelection={toggleMoodSelection}
+          budget={budget}
+          setBudget={setBudget}
+          timeHours={timeHours}
+          setTimeHours={setTimeHours}
+          getLocation={getLocation}
+          gpsStatus={gpsStatus}
+          handleProcessAI={handleProcessAI}
+          isLoading={isLoading}
+          onBackToHome={() => setCurrentScreen('home')}
+          theme={theme}
+          toggleTheme={toggleTheme}
+        />
       )}
 
       {currentScreen === 'ai-result' && (
-        <div className="home-container fade-in" style={{ paddingBottom: '100px' }}>
-          <div className="content-wrapper" style={{ margin: '0 auto', maxWidth: '1000px', paddingTop: '40px' }}>
-            <h2 style={{ color: textMain, textAlign: 'center', marginBottom: '10px', fontSize: '28px' }}>🗺️ สถานที่แนะนำของคุณ</h2>
-            <p style={{ textAlign: 'center', color: textMuted, marginBottom: '30px' }}>คลิกปุ่ม ➕ ด้านล่างรูปภาพ เพื่อเลือกสถานที่เข้าสู่แผนการเดินทางของคุณ</p>
-            
-            <div style={{ backgroundColor: bgCard, padding: '20px', borderRadius: '15px', marginBottom: '30px', border: `1px solid ${theme === 'dark' ? '#333' : '#eee'}`, display: 'flex', flexWrap: 'wrap', gap: '15px' }}>
-              <div style={{ flex: '1 1 45%' }}>
-                <p style={{ margin: '0 0 5px 0', fontSize: '13px', color: textMuted }}>💰 งบประมาณ</p>
-                <p style={{ margin: 0, color: textMain, fontWeight: 'bold' }}>{budget} บาท</p>
-              </div>
-              <div style={{ flex: '1 1 45%' }}>
-                <p style={{ margin: '0 0 5px 0', fontSize: '13px', color: textMuted }}>⏱️ เวลาที่มี</p>
-                <p style={{ margin: 0, color: textMain, fontWeight: 'bold' }}>{timeHours} ชั่วโมง</p>
-              </div>
-            </div>
-
-            <div style={{ padding: '20px', backgroundColor: bgSummary, borderRadius: '20px' }}>
-              {aiRoute.length > 0 ? (
-                Object.entries(
-                  aiRoute.reduce((acc, place) => {
-                    const tag = place.tag || 'ทั่วไป';
-                    if (!acc[tag]) acc[tag] = [];
-                    acc[tag].push(place);
-                    return acc;
-                  }, {})
-                )
-                .map(([tag, places]) => {
-                  // 🌟 จำกัดการแสดงผลแต่ละหมวดหมู่ไม่เกิน 6 สถานที่
-                  const sortedPlaces = [...places].sort((a, b) => (a.distance_km || 9999) - (b.distance_km || 9999)).slice(0, 6);
-                  return [tag, sortedPlaces];
-                })
-                .map(([tag, sortedPlaces]) => (
-                  <div key={tag} style={{ marginBottom: '40px' }}>
-                    <h3 style={{ fontSize: '20px', color: textMain, borderBottom: `2px solid ${theme === 'dark' ? '#333' : '#eee'}`, paddingBottom: '10px', marginBottom: '20px' }}>
-                      🏷️ หมวดหมู่: <span style={{ color: '#1DB954' }}>{tag}</span> (แนะนำ {sortedPlaces.length} แห่ง)
-                    </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-                      {sortedPlaces.map((place) => {
-                        const isSelected = selectedTripPlaces.some(p => p.id === place.id);
-                        return (
-                          <div key={place.id} style={{ backgroundColor: bgCard, borderRadius: '16px', overflow: 'hidden', boxShadow: theme === 'dark' ? '0 4px 12px rgba(0,0,0,0.5)' : '0 4px 12px rgba(0,0,0,0.08)', cursor: 'pointer', border: `2px solid ${isSelected ? '#1DB954' : (theme === 'dark' ? '#333' : '#eaeaea')}`, transition: 'all 0.2s' }} onClick={() => handleViewDetail(place, 'ai-result')}>
-                            <div style={{ position: 'relative' }}>
-                              <img src={place.image} alt={place.name} style={{ width: '100%', height: '200px', objectFit: 'cover', backgroundColor: '#e2e8f0' }} onError={(e) => { e.target.onerror = null; e.target.src = ''; }} />
-                            </div>
-                            <div style={{ padding: '20px' }}>
-                              <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', color: textMain }}>{place.name}</h3>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px', color: textMuted, backgroundColor: theme === 'dark' ? '#1e1e1e' : '#f8fafc', padding: '12px', borderRadius: '10px', marginBottom: '15px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><span>📌</span> <span>{place.location}</span></div>
-                                {place.distance_km !== undefined && (
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: `1px dashed ${theme === 'dark' ? '#444' : '#ccc'}`, paddingTop: '8px', marginTop: '4px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#e53935', fontWeight: 'bold' }}><span>🚗</span> <span>ห่างจากคุณ {place.distance_km} กม.</span></div>
-                                  </div>
-                                )}
-                              </div>
-                              
-                              {/* 🌟 ปุ่มสำหรับกดเลือกเพิ่มลงทริป */}
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); togglePlaceSelection(place); }}
-                                style={{ width: '100%', padding: '12px', borderRadius: '10px', border: 'none', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer', backgroundColor: isSelected ? '#ff4444' : '#1DB954', color: 'white', transition: 'background-color 0.2s' }}
-                              >
-                                {isSelected ? '❌ นำออกจากทริป' : '➕ เพิ่มลงทริป'}
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p style={{ color: textMuted, textAlign: 'center' }}>ไม่พบสถานที่ที่แนะนำ</p>
-              )}
-            </div>
-            
-            <button className="btn btn-outline" style={{ marginTop: '30px', width: '100%' }} onClick={() => setCurrentScreen('ai-input')}>ค้นหาใหม่</button>
-          </div>
-
-          {/* 🌟 แถบเมนูลอยด้านล่างสำหรับยืนยันการจัดทริป */}
-          <div style={{ position: 'fixed', bottom: 0, left: 0, width: '100%', backgroundColor: bgSummary, padding: '20px', boxShadow: '0 -4px 20px rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'center', zIndex: 1000, borderTop: `1px solid ${theme === 'dark' ? '#333' : '#eee'}` }}>
-            <div style={{ maxWidth: '1000px', width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <p style={{ margin: 0, color: textMuted, fontSize: '14px' }}>สถานที่ที่เลือก</p>
-                <h3 style={{ margin: 0, color: textMain, fontSize: '20px' }}>{selectedTripPlaces.length} แห่ง</h3>
-              </div>
-              <button 
-                onClick={generateFinalRoute}
-                disabled={selectedTripPlaces.length === 0}
-                style={{ backgroundColor: selectedTripPlaces.length > 0 ? '#4285F4' : '#ccc', color: 'white', border: 'none', padding: '14px 30px', borderRadius: '12px', fontSize: '16px', fontWeight: 'bold', cursor: selectedTripPlaces.length > 0 ? 'pointer' : 'not-allowed', boxShadow: selectedTripPlaces.length > 0 ? '0 4px 12px rgba(66, 133, 244, 0.4)' : 'none' }}
-              >
-                สร้างแผนการเดินทาง 🚀
-              </button>
-            </div>
-          </div>
-        </div>
+        <AiResultScreen
+          aiRoute={aiRoute}
+          selectedTripPlaces={selectedTripPlaces}
+          togglePlaceSelection={togglePlaceSelection}
+          generateFinalRoute={generateFinalRoute}
+          budget={budget}
+          timeHours={timeHours}
+          onViewDetail={handleViewDetail}
+          onResetSearch={() => setCurrentScreen('ai-input')}
+          onBackToHome={() => setCurrentScreen('home')}
+          theme={theme}
+          toggleTheme={toggleTheme}
+        />
       )}
 
-      {/* 🌟 หน้าจอใหม่: แสดงผลเส้นทางสุดท้ายที่จัดเรียงจุดต่อจุดแล้ว */}
       {currentScreen === 'final-route' && (
-        <div className="home-container fade-in">
-          <div className="content-wrapper" style={{ margin: '0 auto', maxWidth: '1000px', paddingTop: '40px', paddingBottom: '50px' }}>
-            <h2 style={{ color: textMain, textAlign: 'center', marginBottom: '30px', fontSize: '28px' }}>🚗 แผนการเดินทางของคุณ</h2>
-            
-            <div style={{ padding: '20px', backgroundColor: bgSummary, borderRadius: '20px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
-                {finalRoutePlan.map((place, index) => (
-                  <div key={place.id} style={{ display: 'flex', backgroundColor: bgCard, borderRadius: '16px', overflow: 'hidden', boxShadow: theme === 'dark' ? '0 4px 12px rgba(0,0,0,0.5)' : '0 4px 12px rgba(0,0,0,0.08)', cursor: 'pointer', border: `1px solid ${theme === 'dark' ? '#333' : '#eaeaea'}` }} onClick={() => handleViewDetail(place, 'final-route')}>
-                    
-                    <div style={{ position: 'relative', width: '30%' }}>
-                      <img src={place.image} alt={place.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.onerror = null; e.target.src = ''; }} />
-                      <span style={{ position: 'absolute', top: '10px', left: '10px', backgroundColor: '#1DB954', color: 'white', padding: '5px 12px', borderRadius: '20px', fontSize: '14px', fontWeight: 'bold' }}>
-                        📍 จุดที่ {index + 1}
-                      </span>
-                    </div>
-
-                    <div style={{ padding: '20px', width: '70%' }}>
-                      <h3 style={{ margin: '0 0 10px 0', fontSize: '20px', color: textMain }}>{place.name}</h3>
-                      <p style={{ fontSize: '13px', color: textMuted, margin: '0 0 10px 0' }}>📌 {place.location}</p>
-                      
-                      {place.route_distance !== undefined && (
-                        <div style={{ backgroundColor: theme === 'dark' ? '#1e1e1e' : '#f8fafc', padding: '10px', borderRadius: '10px', display: 'flex', gap: '15px' }}>
-                          <span style={{ color: '#e53935', fontSize: '14px', fontWeight: 'bold' }}>🚗 ห่างจากจุดก่อนหน้า: {round(place.route_distance, 1)} กม.</span>
-                          <span style={{ color: '#1DB954', fontSize: '14px', fontWeight: 'bold' }}>⏱️ ใช้เวลา: {calculateEstimatedTime(place.route_distance)}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <button className="btn btn-outline" style={{ marginTop: '30px', width: '100%' }} onClick={() => setCurrentScreen('ai-result')}>← กลับไปแก้ไขสถานที่</button>
-            <button className="btn btn-outline" style={{ marginTop: '10px', width: '100%', borderColor: 'transparent' }} onClick={() => setCurrentScreen('home')}>กลับหน้าแรก</button>
-          </div>
-        </div>
+        <FinalRouteScreen
+          finalRoutePlan={finalRoutePlan}
+          calculateEstimatedTime={calculateEstimatedTime}
+          onViewDetail={handleViewDetail}
+          onOpenVR={openVRMode}
+          onBackToAiResult={() => setCurrentScreen('ai-result')}
+          onBackToHome={() => setCurrentScreen('home')}
+          theme={theme}
+          toggleTheme={toggleTheme}
+        />
       )}
 
       {currentScreen === 'detail' && selectedAttraction && (
-        <div className="home-container fade-in" style={{ paddingBottom: '50px' }}>
-          <div className="content-wrapper" style={{ margin: '0 auto', maxWidth: '800px', paddingTop: '40px' }}>
-            <div style={{ backgroundColor: bgSummary, borderRadius: '20px', overflow: 'hidden', boxShadow: theme === 'light' ? '0 10px 30px rgba(0,0,0,0.08)' : '0 10px 30px rgba(0,0,0,0.5)' }}>
-              <img src={selectedAttraction.image} alt={selectedAttraction.name} style={{ width: '100%', height: '350px', objectFit: 'cover', backgroundColor: '#e2e8f0' }} onError={(e) => { e.target.onerror = null; e.target.src = ''; }} />
-              <div style={{ padding: '30px' }}>
-                <span className="tag" style={{ fontSize: '14px', padding: '6px 15px', marginBottom: '15px' }}>{selectedAttraction.tag}</span>
-                <h1 style={{ margin: '0 0 20px 0', fontSize: '32px', color: '#1DB954' }}>{selectedAttraction.name}</h1>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '30px', padding: '20px', backgroundColor: bgCard, borderRadius: '15px' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}><span style={{ fontSize: '20px' }}>📍</span><div><strong style={{ color: textMain, display: 'block', marginBottom: '5px' }}>พิกัดสถานที่</strong><span style={{ color: textMuted, fontSize: '15px' }}>{selectedAttraction.location}</span></div></div>
-                </div>
-                <h3 style={{ color: textMain, marginBottom: '10px', fontSize: '20px' }}>ℹ️ รายละเอียดสถานที่</h3>
-                <p style={{ color: textMuted, lineHeight: '1.8', fontSize: '16px', marginBottom: '40px' }}>{selectedAttraction.description}</p>
-                <h3 style={{ color: textMain, marginBottom: '15px', fontSize: '20px' }}>🗺️ แผนที่และการเดินทาง</h3>
-                <div style={{ borderRadius: '15px', overflow: 'hidden', border: `2px solid ${theme === 'dark' ? '#333' : '#eee'}`, marginBottom: '15px' }}>
-                  <iframe title="Google Maps" width="100%" height="350" style={{ border: 0, display: 'block' }} loading="lazy" allowFullScreen src={selectedAttraction.lat && selectedAttraction.lng ? `https://maps.google.com/maps?q=${selectedAttraction.lat},${selectedAttraction.lng}&t=&z=14&ie=UTF8&iwloc=B&output=embed` : `https://maps.google.com/maps?q=${encodeURIComponent(selectedAttraction.name + ' สุราษฎร์ธานี')}&t=&z=14&ie=UTF8&iwloc=B&output=embed`}></iframe>
-                </div>
-                {/* Rating & Feedback Section (Tourist RBAC) */}
-                <div style={{ marginTop: '30px', padding: '20px', backgroundColor: bgCard, borderRadius: '16px', border: `1.5px solid ${theme === 'dark' ? '#333' : '#e2e8f0'}` }}>
-                  <h3 style={{ color: textMain, margin: '0 0 8px 0', fontSize: '18px' }}>⭐ ให้คะแนนความพึงพอใจ (Submit Feedback)</h3>
-                  <p style={{ color: textMuted, fontSize: '13px', margin: '0 0 16px 0' }}>
-                    คะแนนของคุณจะช่วยให้ AI เรียนรู้และจัดทริปได้ตรงใจนักท่องเที่ยวมากยิ่งขึ้น
-                  </p>
-                  <div style={{ display: 'flex', gap: '8px', fontSize: '26px', cursor: 'pointer', marginBottom: '14px' }}>
-                    {['⭐', '⭐', '⭐', '⭐', '⭐'].map((star, idx) => (
-                      <span
-                        key={idx}
-                        onClick={() => alert(`ขอบคุณสำหรับคะแนน ${idx + 1} ดาว! ระบบบันทึกฟีดแบ็กเพื่อพัฒนาการเรียนรู้ของ AI เรียบร้อยแล้วครับ ✨`)}
-                        title={`ให้ ${idx + 1} ดาว`}
-                        style={{ transition: 'transform 0.15s' }}
-                        onMouseEnter={(e) => (e.target.style.transform = 'scale(1.25)')}
-                        onMouseLeave={(e) => (e.target.style.transform = 'scale(1)')}
-                      >
-                        {star}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '24px' }}>
-                  <a href={selectedAttraction.lat && selectedAttraction.lng ? `https://www.google.com/maps/search/?api=1&query=${selectedAttraction.lat},${selectedAttraction.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedAttraction.name + ' สุราษฎร์ธานี')}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#4285F4', color: 'white', padding: '15px', borderRadius: '12px', textDecoration: 'none', fontWeight: 'bold', fontSize: '15px', transition: 'all 0.3s ease' }}>📍 เปิดแอปนำทาง</a>
-                  <button onClick={() => openVRMode(selectedAttraction)} style={{ flex: 1, backgroundColor: '#333', color: 'white', padding: '15px', borderRadius: '12px', border: 'none', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', transition: 'all 0.3s ease' }}>🕶️ เข้าสู่โหมด VR 360°</button>
-                </div>
-              </div>
-            </div>
-            <button className="btn btn-outline" onClick={() => setCurrentScreen(previousScreen)} style={{ width: '100%', marginTop: '30px', padding: '16px', fontSize: '16px', borderRadius: '20px', border: `2px solid ${textMuted}`, color: textMain }}>← ย้อนกลับ</button>
-          </div>
-        </div>
+        <DetailScreen
+          selectedAttraction={selectedAttraction}
+          onOpenVR={openVRMode}
+          onBack={() => setCurrentScreen(previousScreen || 'home')}
+          theme={theme}
+          toggleTheme={toggleTheme}
+        />
       )}
 
       {vrMode && currentVrPlace && (

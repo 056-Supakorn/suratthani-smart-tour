@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import ThemeToggleBtn from './ThemeToggleBtn';
 
 export default function AiResultScreen({
   aiRoute,
+  homePlaces,
   selectedTripPlaces,
   togglePlaceSelection,
   generateFinalRoute,
@@ -18,6 +19,7 @@ export default function AiResultScreen({
   theme,
   toggleTheme,
 }) {
+  const [manualQuery, setManualQuery] = useState('');
   const getPlaceImage = (place) => {
     if (place.image && place.image.trim() !== '' && !place.image.startsWith('/images/')) {
       return place.image;
@@ -57,6 +59,99 @@ export default function AiResultScreen({
     const sorted = [...places].sort((a, b) => (a.distance_km || 9999) - (b.distance_km || 9999)).slice(0, 6);
     return [tag, sorted];
   });
+
+  // ค้นหาสถานที่อื่นเพิ่มเติมเผื่อ AI ไม่ได้แนะนำที่ที่ผู้ใช้อยากไป
+  const aiRouteIds = new Set(aiRoute.map((p) => p.id));
+  const trimmedQuery = manualQuery.trim().toLowerCase();
+  const manualSearchResults = trimmedQuery
+    ? (homePlaces || [])
+        .filter((p) => !aiRouteIds.has(p.id))
+        .filter(
+          (p) =>
+            (p.name && p.name.toLowerCase().includes(trimmedQuery)) ||
+            (p.location && p.location.toLowerCase().includes(trimmedQuery)) ||
+            (p.tag && p.tag.toLowerCase().includes(trimmedQuery)) ||
+            (p.description && p.description.toLowerCase().includes(trimmedQuery))
+        )
+        .slice(0, 12)
+    : [];
+
+  const renderPlaceCard = (place, tagLabel) => {
+    const isSelected = selectedTripPlaces.some((p) => p.id === place.id);
+    const imgSrc = getPlaceImage(place);
+
+    return (
+      <div
+        key={place.id}
+        className={`surat-attraction-card ${isSelected ? 'selected-trip-card' : ''}`}
+        onClick={() => onViewDetail(place, 'ai-result')}
+        style={{
+          border: isSelected ? '2px solid #10b981' : undefined,
+          boxShadow: isSelected ? '0 10px 30px rgba(16, 185, 129, 0.25)' : undefined,
+        }}
+      >
+        <div className="card-photo-container">
+          <img src={imgSrc} alt={place.name} className="card-photo-img" loading="lazy" />
+          <span className="card-tag-pill-badge">{tagLabel}</span>
+          {isSelected && (
+            <span
+              style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                background: '#10b981',
+                color: '#fff',
+                borderRadius: '20px',
+                padding: '4px 10px',
+                fontSize: '11px',
+                fontWeight: 700,
+                zIndex: 2,
+              }}
+            >
+              ✓ เลือกแล้ว
+            </span>
+          )}
+        </div>
+
+        <div className="card-info-body">
+          <h3 className="card-place-title" title={place.name}>{place.name}</h3>
+          <p className="card-place-location">{place.location || 'สุราษฎร์ธานี'}</p>
+
+          {place.distance_km !== undefined && (
+            <div className="distance-pill-badge" style={{ marginBottom: '14px', width: 'fit-content' }}>
+              <span>🚗 ห่างจากคุณ {place.distance_km} กม.</span>
+            </div>
+          )}
+
+          <div className="card-action-btns-wrap" style={{ width: '100%' }}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePlaceSelection(place);
+              }}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '12px',
+                border: 'none',
+                fontFamily: 'Prompt, sans-serif',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                background: isSelected ? '#ef4444' : 'linear-gradient(135deg, #123e2f 0%, #059669 100%)',
+                color: '#ffffff',
+                boxShadow: isSelected ? '0 4px 12px rgba(239,68,68,0.3)' : '0 4px 12px rgba(5,150,105,0.3)',
+                transition: 'all 0.2s',
+              }}
+            >
+              {isSelected ? '❌ นำออกจากทริป' : '➕ เพิ่มลงทริป'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="home-root-wrapper fade-in" style={{ paddingBottom: '120px' }}>
@@ -134,6 +229,43 @@ export default function AiResultScreen({
           )}
         </section>
 
+        {/* Manual Search - เผื่อ AI ไม่ได้แนะนำที่ที่ผู้ใช้อยากไป */}
+        <section className="home-search-bar-wrap" style={{ marginBottom: '28px' }}>
+          <div className="home-search-pill-box">
+            <div className="search-input-inner">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="search-pill-icon">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input
+                type="text"
+                value={manualQuery}
+                onChange={(e) => setManualQuery(e.target.value)}
+                placeholder="หาไม่เจอที่ที่อยากไป? ค้นหาสถานที่อื่นเพิ่มเติมที่นี่..."
+                className="search-pill-input"
+              />
+            </div>
+          </div>
+        </section>
+
+        {trimmedQuery && (
+          <section style={{ marginBottom: '36px' }}>
+            <div className="section-title-wrapper" style={{ textAlign: 'left', marginBottom: '16px' }}>
+              <h3 className="section-main-title" style={{ fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>🔍 ผลการค้นหาเพิ่มเติมสำหรับ:</span>
+                <span style={{ color: '#059669' }}>"{manualQuery}"</span>
+              </h3>
+            </div>
+            {manualSearchResults.length > 0 ? (
+              <div className="attraction-cards-grid-3col">
+                {manualSearchResults.map((place) => renderPlaceCard(place, place.tag || 'ทั่วไป'))}
+              </div>
+            ) : (
+              <p style={{ fontSize: '13px', color: '#64748b' }}>ไม่พบสถานที่ที่ตรงกับคำค้นหานี้</p>
+            )}
+          </section>
+        )}
+
         {/* Categorized Attractions */}
         {categorizedData.length > 0 ? (
           categorizedData.map(([tag, sortedPlaces]) => (
@@ -147,82 +279,7 @@ export default function AiResultScreen({
               </div>
 
               <div className="attraction-cards-grid-3col">
-                {sortedPlaces.map((place) => {
-                  const isSelected = selectedTripPlaces.some((p) => p.id === place.id);
-                  const imgSrc = getPlaceImage(place);
-
-                  return (
-                    <div
-                      key={place.id}
-                      className={`surat-attraction-card ${isSelected ? 'selected-trip-card' : ''}`}
-                      onClick={() => onViewDetail(place, 'ai-result')}
-                      style={{
-                        border: isSelected ? '2px solid #10b981' : undefined,
-                        boxShadow: isSelected ? '0 10px 30px rgba(16, 185, 129, 0.25)' : undefined,
-                      }}
-                    >
-                      <div className="card-photo-container">
-                        <img src={imgSrc} alt={place.name} className="card-photo-img" loading="lazy" />
-                        <span className="card-tag-pill-badge">{tag}</span>
-                        {isSelected && (
-                          <span
-                            style={{
-                              position: 'absolute',
-                              top: '12px',
-                              right: '12px',
-                              background: '#10b981',
-                              color: '#fff',
-                              borderRadius: '20px',
-                              padding: '4px 10px',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              zIndex: 2,
-                            }}
-                          >
-                            ✓ เลือกแล้ว
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="card-info-body">
-                        <h3 className="card-place-title" title={place.name}>{place.name}</h3>
-                        <p className="card-place-location">{place.location || 'สุราษฎร์ธานี'}</p>
-
-                        {place.distance_km !== undefined && (
-                          <div className="distance-pill-badge" style={{ marginBottom: '14px', width: 'fit-content' }}>
-                            <span>🚗 ห่างจากคุณ {place.distance_km} กม.</span>
-                          </div>
-                        )}
-
-                        <div className="card-action-btns-wrap" style={{ width: '100%' }}>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              togglePlaceSelection(place);
-                            }}
-                            style={{
-                              width: '100%',
-                              padding: '10px',
-                              borderRadius: '12px',
-                              border: 'none',
-                              fontFamily: 'Prompt, sans-serif',
-                              fontSize: '13px',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              background: isSelected ? '#ef4444' : 'linear-gradient(135deg, #123e2f 0%, #059669 100%)',
-                              color: '#ffffff',
-                              boxShadow: isSelected ? '0 4px 12px rgba(239,68,68,0.3)' : '0 4px 12px rgba(5,150,105,0.3)',
-                              transition: 'all 0.2s',
-                            }}
-                          >
-                            {isSelected ? '❌ นำออกจากทริป' : '➕ เพิ่มลงทริป'}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {sortedPlaces.map((place) => renderPlaceCard(place, tag))}
               </div>
             </section>
           ))

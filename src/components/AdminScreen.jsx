@@ -64,6 +64,10 @@ export default function AdminScreen({
   };
 
   const openEditPlaceForm = (place) => {
+    if (place.ownerEmail) {
+      alert('สถานที่นี้มาจากผู้ประกอบการ กรุณาแก้ไขผ่านแท็บ "ตรวจสอบและอนุมัติร้านค้า (Moderation)" แทนครับ');
+      return;
+    }
     setEditingPlaceId(place.id);
     setPoiForm({
       name: place.name || '',
@@ -163,6 +167,8 @@ export default function AdminScreen({
         setMerchants((prev) =>
           prev.map((m) => (m.id === id ? { ...m, status, rejectReason: reason } : m))
         );
+        // สถานะร้านค้าเปลี่ยน (อนุมัติ/ยกเลิกอนุมัติ) กระทบรายการ "จัดการข้อมูลสถานที่" โดยตรง โหลดใหม่ให้ตรงกันทันที
+        loadPlaces();
       } else {
         alert(response.data.message || 'เกิดข้อผิดพลาดในการอัปเดตสถานะ');
       }
@@ -519,11 +525,16 @@ export default function AdminScreen({
             <div className="table-header-row">
               <div>
                 <h2 className="table-title">ฐานข้อมูลสถานที่ท่องเที่ยวทั้งหมดในระบบ ({places.length} แห่ง)</h2>
-                <p className="table-desc">เพิ่ม, แก้ไข หรือดูรายละเอียดสถานที่ท่องเที่ยวในระบบ</p>
+                <p className="table-desc">เพิ่ม, แก้ไข หรือดูรายละเอียดสถานที่ท่องเที่ยวในระบบ (รวมสถานที่ของผู้ประกอบการที่อนุมัติแล้ว)</p>
               </div>
-              <button type="button" className="btn-add-new-place" onClick={openAddPlaceForm}>
-                ➕ เพิ่มสถานที่ใหม่ (Add POI)
-              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button type="button" className="btn-recheck-action" onClick={loadPlaces}>
+                  🔄 รีเฟรช
+                </button>
+                <button type="button" className="btn-add-new-place" onClick={openAddPlaceForm}>
+                  ➕ เพิ่มสถานที่ใหม่ (Add POI)
+                </button>
+              </div>
             </div>
 
             {placesError && (
@@ -667,7 +678,14 @@ export default function AdminScreen({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <span className="place-num">{String(index + 1).padStart(2, '0')}</span>
                       <div style={{ flex: 1 }}>
-                        <h4 className="place-item-title">{place.name}</h4>
+                        <h4 className="place-item-title">
+                          {place.name}{' '}
+                          {place.ownerEmail && (
+                            <span className="business-type-tag" style={{ fontSize: '11px', marginLeft: '6px' }}>
+                              🏪 จากร้านค้า
+                            </span>
+                          )}
+                        </h4>
                         <p className="place-item-sub">
                           {place.location || '-'} • หมวดหมู่: {place.tag || '-'} • พิกัด: {place.lat}, {place.lng}
                         </p>
@@ -679,9 +697,15 @@ export default function AdminScreen({
                       >
                         {expandedPlaceId === place.id ? '🔼 ซ่อน' : '🔽 ดูรายละเอียด'}
                       </button>
-                      <button type="button" className="btn-approve-action" onClick={() => openEditPlaceForm(place)}>
-                        ✏️ แก้ไข
-                      </button>
+                      {place.ownerEmail ? (
+                        <span className="upload-status-hint" title="แก้ไขสถานที่ของผู้ประกอบการได้ที่แท็บ Moderation">
+                          จัดการที่แท็บ Moderation
+                        </span>
+                      ) : (
+                        <button type="button" className="btn-approve-action" onClick={() => openEditPlaceForm(place)}>
+                          ✏️ แก้ไข
+                        </button>
+                      )}
                     </div>
                     {expandedPlaceId === place.id && (
                       <div className="my-place-card-details" style={{ marginTop: '12px' }}>

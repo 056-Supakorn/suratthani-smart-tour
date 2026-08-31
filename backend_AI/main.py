@@ -11,6 +11,7 @@ from fastapi import FastAPI, Header, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from typing import Optional
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
@@ -189,8 +190,8 @@ class TripRequest(BaseModel):
     time_hours: float
     categories: list
     trip_mood: str
-    user_lat: float = None 
-    user_lng: float = None 
+    user_lat: Optional[float] = None
+    user_lng: Optional[float] = None
 
 class UserInfo(BaseModel):
     name: str
@@ -394,7 +395,9 @@ def admin_update_merchant_place_status(place_id: str, body: MerchantPlaceStatusU
 def admin_list_places(x_admin_key: str = Header(None)):
     verify_admin_key(x_admin_key)
     load_places_db()
-    return {"status": "success", "places": ATTRACTIONS_DB}
+    # รวมสถานที่ของผู้ประกอบการที่อนุมัติแล้วเข้ามาด้วย เพื่อให้เห็นสถานที่ทั้งหมดที่แสดงผลจริงในระบบ
+    approved_merchant_places = list(merchant_places_collection.find({"status": "approved"}, {"_id": 0}))
+    return {"status": "success", "places": ATTRACTIONS_DB + approved_merchant_places}
 
 @app.post("/admin/places")
 def admin_create_place(body: AdminPlaceUpsert, x_admin_key: str = Header(None)):

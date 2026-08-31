@@ -592,6 +592,7 @@ function App() {
       {currentScreen === 'ai-result' && (
         <AiResultScreen
           aiRoute={aiRoute}
+          homePlaces={homePlaces}
           selectedTripPlaces={selectedTripPlaces}
           togglePlaceSelection={togglePlaceSelection}
           generateFinalRoute={generateFinalRoute}

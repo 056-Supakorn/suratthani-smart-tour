@@ -8,6 +8,10 @@ export default function AiResultScreen({
   generateFinalRoute,
   budget,
   timeHours,
+  timeUnit,
+  estimatedCost,
+  estimatedTimeHours,
+  budgetWarning,
   onViewDetail,
   onResetSearch,
   onBackToHome,
@@ -105,12 +109,29 @@ export default function AiResultScreen({
 
           <div style={{ display: 'flex', gap: '8px', zIndex: 2, flexWrap: 'wrap' }}>
             <span className="filter-badge approved" style={{ background: '#ffffff', color: '#123e2f', fontWeight: 700 }}>
-              💰 งบประมาณ: {budget} บ.
+              💰 งบประมาณ: {budget} บ. (ใช้จริง {estimatedCost} บ.)
             </span>
             <span className="filter-badge approved" style={{ background: '#ffffff', color: '#123e2f', fontWeight: 700 }}>
-              ⏱️ เวลา: {timeHours} ชม.
+              ⏱️ เวลา: {timeHours} {timeUnit === 'days' ? 'วัน' : timeUnit === 'weeks' ? 'สัปดาห์' : 'ชม.'} (ใช้จริง {estimatedTimeHours} ชม.)
             </span>
           </div>
+
+          {budgetWarning && (
+            <div
+              style={{
+                marginTop: '14px',
+                background: 'rgba(255,255,255,0.9)',
+                color: '#92400e',
+                borderRadius: '14px',
+                padding: '12px 16px',
+                fontSize: '13px',
+                fontWeight: 600,
+                zIndex: 2,
+              }}
+            >
+              ⚠️ {budgetWarning}
+            </div>
+          )}
         </section>
 
         {/* Categorized Attractions */}

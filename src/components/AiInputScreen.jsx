@@ -12,6 +12,8 @@ export default function AiInputScreen({
   setBudget,
   timeHours,
   setTimeHours,
+  timeUnit,
+  setTimeUnit,
   getLocation,
   gpsStatus,
   handleProcessAI,
@@ -196,15 +198,28 @@ export default function AiInputScreen({
             </div>
 
             <div className="form-field-group">
-              <label className="form-input-label">⏱️ เวลาที่มีสำหรับทริปนี้ (ชั่วโมง) *</label>
-              <input
-                type="number"
-                placeholder="เช่น 6"
-                value={timeHours}
-                onChange={(e) => setTimeHours(e.target.value)}
-                className="merchant-text-input"
-                required
-              />
+              <label className="form-input-label">⏱️ เวลาที่มีสำหรับทริปนี้ *</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="number"
+                  placeholder="เช่น 6"
+                  value={timeHours}
+                  onChange={(e) => setTimeHours(e.target.value)}
+                  className="merchant-text-input"
+                  style={{ flex: 1 }}
+                  required
+                />
+                <select
+                  value={timeUnit}
+                  onChange={(e) => setTimeUnit(e.target.value)}
+                  className="merchant-select-input"
+                  style={{ width: '110px' }}
+                >
+                  <option value="hours">ชั่วโมง</option>
+                  <option value="days">วัน</option>
+                  <option value="weeks">สัปดาห์</option>
+                </select>
+              </div>
             </div>
           </div>
 

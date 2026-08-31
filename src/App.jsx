@@ -58,14 +58,18 @@ function App() {
   
   const [budget, setBudget] = useState('');
   const [timeHours, setTimeHours] = useState('');
-  
+  const [timeUnit, setTimeUnit] = useState('hours'); // 'hours' | 'days' | 'weeks'
+
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   const [userLat, setUserLat] = useState(null);
   const [userLng, setUserLng] = useState(null);
   const [gpsStatus, setGpsStatus] = useState('');
 
-  const [aiRoute, setAiRoute] = useState([]); 
+  const [aiRoute, setAiRoute] = useState([]);
+  const [estimatedCost, setEstimatedCost] = useState(0);
+  const [estimatedTimeHours, setEstimatedTimeHours] = useState(0);
+  const [budgetWarning, setBudgetWarning] = useState(null);
   // 🌟 State ใหม่สำหรับเก็บสถานที่ที่ผู้ใช้เลือกเข้าทริป
   const [selectedTripPlaces, setSelectedTripPlaces] = useState([]);
   const [finalRoutePlan, setFinalRoutePlan] = useState([]);
@@ -260,6 +264,8 @@ function App() {
     setCurrentScreen('home');
   };
 
+  const TIME_UNIT_TO_HOURS = { hours: 1, days: 24, weeks: 24 * 7 };
+
   const handleProcessAI = async () => {
     if (selectedPrefs.length === 0 || tripMoods.length === 0 || !budget || !timeHours) {
       alert('กรุณาเลือกหมวดหมู่, อารมณ์ทริป, ระบุงบประมาณ และเวลาให้ครบถ้วนครับ');
@@ -267,12 +273,17 @@ function App() {
     }
     setIsLoading(true);
     setSelectedTripPlaces([]); // ล้างตะกร้าทริปเก่า
+    setBudgetWarning(null);
     try {
+      const timeHoursNormalized = parseFloat(timeHours) * (TIME_UNIT_TO_HOURS[timeUnit] || 1);
       const response = await axios.post(`${API_BASE_URL}/recommend`, {
-        budget: parseFloat(budget), time_hours: parseFloat(timeHours), categories: selectedPrefs, trip_mood: tripMoods.join(', '), user_lat: userLat, user_lng: userLng
+        budget: parseFloat(budget), time_hours: timeHoursNormalized, categories: selectedPrefs, trip_mood: tripMoods.join(', '), user_lat: userLat, user_lng: userLng
       });
       if (response.data.status === 'success') {
-        setAiRoute(response.data.route); 
+        setAiRoute(response.data.route);
+        setEstimatedCost(response.data.estimated_cost || 0);
+        setEstimatedTimeHours(response.data.estimated_time_hours || 0);
+        setBudgetWarning(response.data.budget_warning || null);
         localStorage.setItem('userPref', selectedPrefs[0]);
         setLastPref(selectedPrefs[0]);
         setCurrentScreen('ai-result');
@@ -566,6 +577,8 @@ function App() {
           setBudget={setBudget}
           timeHours={timeHours}
           setTimeHours={setTimeHours}
+          timeUnit={timeUnit}
+          setTimeUnit={setTimeUnit}
           getLocation={getLocation}
           gpsStatus={gpsStatus}
           handleProcessAI={handleProcessAI}
@@ -584,6 +597,10 @@ function App() {
           generateFinalRoute={generateFinalRoute}
           budget={budget}
           timeHours={timeHours}
+          timeUnit={timeUnit}
+          estimatedCost={estimatedCost}
+          estimatedTimeHours={estimatedTimeHours}
+          budgetWarning={budgetWarning}
           onViewDetail={handleViewDetail}
           onResetSearch={() => setCurrentScreen('ai-input')}
           onBackToHome={() => setCurrentScreen('home')}

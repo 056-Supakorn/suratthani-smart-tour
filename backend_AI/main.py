@@ -16,6 +16,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 import os
 import random
+import re
 import shutil
 import uuid
 from datetime import datetime
@@ -168,6 +169,17 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
+
+# ค่าสมมติสำหรับคำนวณว่าทริปหนึ่งๆ ใช้เวลาไปเท่าไหร่ (ไม่มีข้อมูล "เวลาที่ควรอยู่ต่อสถานที่" จริงในระบบ)
+DEFAULT_VISIT_DURATION_HOURS = 1.5  # เวลาโดยประมาณที่ใช้เที่ยวต่อ 1 สถานที่
+AVG_TRAVEL_SPEED_KMH = 40.0  # ความเร็วเฉลี่ยโดยประมาณสำหรับประเมินเวลาเดินทางระหว่างจุด
+
+def parse_price_to_number(price_str) -> float:
+    """แปลงข้อความราคา (เช่น '50 บาท/คน', 'ฟรี', '') ให้เป็นตัวเลขบาทโดยประมาณ"""
+    if not price_str:
+        return 0.0
+    match = re.search(r'\d+(\.\d+)?', str(price_str))
+    return float(match.group()) if match else 0.0
 
 # ==========================================
 # 📦 Schemas
@@ -535,24 +547,52 @@ def recommend_trip(req: TripRequest):
         if len(places_data) == 0:
             places_data = random.sample(ATTRACTIONS_DB, min(4, len(ATTRACTIONS_DB)))
 
-        route_plan = []
-        
-        # 5. ให้ GPS จัดเรียงทั้งหมดจากจุดที่ใกล้ที่สุดไปไกลที่สุด
+        # 5. เรียงลำดับผู้สมัครทั้งหมดตาม GPS จากใกล้ไปไกล (ถ้ามีพิกัด) พร้อมประเมินเวลาเดินทางแต่ละช่วง
+        ordered_candidates = []
         if req.user_lat and req.user_lng:
+            remaining = places_data.copy()
             current_lat, current_lng = req.user_lat, req.user_lng
-            while places_data:
-                nearest_place = min(places_data, key=lambda p: calculate_distance(current_lat, current_lng, float(p['lat']), float(p['lng'])))
-                
-                dist_from_user = calculate_distance(req.user_lat, req.user_lng, float(nearest_place['lat']), float(nearest_place['lng']))
-                nearest_place['distance_km'] = round(dist_from_user, 1)
-                
-                route_plan.append(nearest_place)
-                
+            while remaining:
+                nearest_place = min(remaining, key=lambda p: calculate_distance(current_lat, current_lng, float(p['lat']), float(p['lng'])))
+                dist = calculate_distance(current_lat, current_lng, float(nearest_place['lat']), float(nearest_place['lng']))
+                nearest_place['distance_km'] = round(dist, 1)
+                nearest_place['_leg_travel_hours'] = dist / AVG_TRAVEL_SPEED_KMH
+                ordered_candidates.append(nearest_place)
                 current_lat, current_lng = float(nearest_place['lat']), float(nearest_place['lng'])
-                places_data.remove(nearest_place)
+                remaining.remove(nearest_place)
         else:
-            route_plan = places_data
+            for p in places_data:
+                p['_leg_travel_hours'] = 0.0
+            ordered_candidates = places_data
 
-        return {"status": "success", "route": route_plan}
+        # 6. คัดเลือกแบบ greedy ให้รวมค่าใช้จ่ายและเวลาไม่เกินงบ/เวลาที่ระบุจริง
+        route_plan = []
+        total_cost = 0.0
+        total_time = 0.0
+        for p in ordered_candidates:
+            leg_hours = p.pop('_leg_travel_hours', 0.0)
+            price = parse_price_to_number(p.get('price', ''))
+            stop_time = leg_hours + DEFAULT_VISIT_DURATION_HOURS
+            if (total_cost + price) <= req.budget and (total_time + stop_time) <= req.time_hours:
+                route_plan.append(p)
+                total_cost += price
+                total_time += stop_time
+
+        budget_warning = None
+        if len(route_plan) == 0 and ordered_candidates:
+            # งบ/เวลาน้อยเกินกว่าจะไปที่ไหนได้เลย เลือกตัวเลือกที่ประหยัดที่สุดให้แทนอย่างน้อย 1 ที่
+            cheapest = min(ordered_candidates, key=lambda p: parse_price_to_number(p.get('price', '')))
+            route_plan = [cheapest]
+            total_cost = parse_price_to_number(cheapest.get('price', ''))
+            total_time = DEFAULT_VISIT_DURATION_HOURS
+            budget_warning = "งบประมาณหรือเวลาที่ระบุอาจไม่พอสำหรับสถานที่ที่แนะนำ ระบบเลือกตัวเลือกที่ประหยัดที่สุดให้แทนอย่างน้อย 1 แห่ง"
+
+        return {
+            "status": "success",
+            "route": route_plan,
+            "estimated_cost": round(total_cost, 2),
+            "estimated_time_hours": round(total_time, 2),
+            "budget_warning": budget_warning,
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}

@@ -10,26 +10,9 @@ export default function LoginScreen({
   theme,
   toggleTheme,
   onGoToRegister,
-  onAdminLogin,
+  onDemoLogin,
 }) {
   const [rememberMe, setRememberMe] = useState(true);
-  const [showAdminForm, setShowAdminForm] = useState(false);
-  const [adminEmail, setAdminEmail] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [adminError, setAdminError] = useState('');
-  const [isAdminSubmitting, setIsAdminSubmitting] = useState(false);
-
-  const handleAdminSubmit = async (e) => {
-    e.preventDefault();
-    if (!adminEmail.trim() || !adminPassword.trim()) return;
-    setIsAdminSubmitting(true);
-    setAdminError('');
-    const result = await onAdminLogin(adminEmail.trim(), adminPassword);
-    setIsAdminSubmitting(false);
-    if (!result.success) {
-      setAdminError(result.message || 'เข้าสู่ระบบไม่สำเร็จ');
-    }
-  };
 
   const handleSubmit = (e) => {
     e && e.preventDefault && e.preventDefault();
@@ -247,73 +230,70 @@ export default function LoginScreen({
             <span>ข้อมูลของคุณปลอดภัยและถูกเก็บเป็นความลับ</span>
           </div>
 
-          {/* Admin Portal Entry */}
-          {onAdminLogin && (
-            <div className="login-admin-footer-link" style={{ marginTop: '12px', textAlign: 'center' }}>
-              <button
-                type="button"
-                onClick={() => { setShowAdminForm((v) => !v); setAdminError(''); }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#64748b',
-                  fontSize: '11.5px',
-                  cursor: 'pointer',
-                  fontFamily: 'Prompt, sans-serif',
-                  textDecoration: 'underline',
-                  opacity: 0.8,
-                  transition: 'opacity 0.2s',
-                }}
-                onMouseEnter={(e) => (e.target.style.opacity = '1')}
-                onMouseLeave={(e) => (e.target.style.opacity = '0.8')}
-                title="เข้าสู่ระบบศูนย์ควบคุมสำหรับผู้ดูแลระบบ"
-              >
-                🛡️ เข้าสู่ระบบผู้ดูแลระบบ (Admin Portal)
-              </button>
-
-              {showAdminForm && (
-                <form
-                  onSubmit={handleAdminSubmit}
+          {onDemoLogin && (
+            <div style={{ marginTop: '20px', textAlign: 'center' }}>
+              <p style={{ fontSize: '11.5px', color: '#94a3b8', margin: '0 0 10px 0' }}>
+                หรือทดลองใช้งานทันทีด้วยบัญชีตัวอย่าง
+              </p>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => onDemoLogin('tourist')}
+                  disabled={isLoggingIn}
+                  className="login-demo-btn"
                   style={{
-                    marginTop: '10px',
-                    padding: '14px',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '10px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
-                    textAlign: 'left',
+                    background: '#eef2f5',
+                    color: '#334155',
+                    border: '1px solid #dfe6ec',
+                    borderRadius: '20px',
+                    padding: '8px 14px',
+                    fontSize: '12.5px',
+                    fontFamily: 'Prompt, sans-serif',
+                    fontWeight: 600,
+                    cursor: isLoggingIn ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  <input
-                    type="email"
-                    placeholder="อีเมลผู้ดูแลระบบ"
-                    value={adminEmail}
-                    onChange={(e) => setAdminEmail(e.target.value)}
-                    className="login-text-input"
-                    required
-                  />
-                  <input
-                    type="password"
-                    placeholder="รหัสผ่านผู้ดูแลระบบ"
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    className="login-text-input"
-                    required
-                  />
-                  {adminError && (
-                    <span style={{ color: '#dc2626', fontSize: '12px' }}>{adminError}</span>
-                  )}
-                  <button
-                    type="submit"
-                    className="login-primary-submit-btn"
-                    disabled={isAdminSubmitting}
-                    style={{ marginTop: '4px' }}
-                  >
-                    <span>{isAdminSubmitting ? 'กำลังตรวจสอบ...' : 'เข้าสู่ระบบผู้ดูแลระบบ'}</span>
-                  </button>
-                </form>
-              )}
+                  🎒 Demo นักท่องเที่ยว
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDemoLogin('business')}
+                  disabled={isLoggingIn}
+                  className="login-demo-btn"
+                  style={{
+                    background: '#fff7ed',
+                    color: '#9a3412',
+                    border: '1px solid #fed7aa',
+                    borderRadius: '20px',
+                    padding: '8px 14px',
+                    fontSize: '12.5px',
+                    fontFamily: 'Prompt, sans-serif',
+                    fontWeight: 600,
+                    cursor: isLoggingIn ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  🏪 Demo ผู้ประกอบการ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDemoLogin('admin')}
+                  disabled={isLoggingIn}
+                  className="login-demo-btn"
+                  style={{
+                    background: '#f0fdf4',
+                    color: '#166534',
+                    border: '1px solid #bbf7d0',
+                    borderRadius: '20px',
+                    padding: '8px 14px',
+                    fontSize: '12.5px',
+                    fontFamily: 'Prompt, sans-serif',
+                    fontWeight: 600,
+                    cursor: isLoggingIn ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  🛡️ Demo ผู้ดูแลระบบ
+                </button>
+              </div>
             </div>
           )}
         </div>

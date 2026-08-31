@@ -1114,13 +1114,18 @@
   cursor: pointer;
 }
 
-.merchant-content-wrap {
+.merchant-main-content {
   max-width: 1000px;
   margin: 28px auto;
-  padding: 0 18px;
+  padding: 0 18px 40px;
 }
 
-.merchant-status-card {
+.merchant-status-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
   background: #ffffff;
   border-radius: 20px;
   padding: 20px 24px;
@@ -1129,10 +1134,14 @@
   border-left: 5px solid #f59e0b;
 }
 
-.dark-theme .merchant-status-card {
+.dark-theme .merchant-status-banner {
   background: #1a2027;
-  border-left-color: #f59e0b;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.status-banner-left {
+  flex: 1;
+  min-width: 240px;
 }
 
 .status-badge-pending {
@@ -1153,7 +1162,7 @@
   color: #fde68a;
 }
 
-.pulse-indicator {
+.pulse-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -1168,62 +1177,109 @@
   100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
 }
 
-.status-desc {
+.status-banner-desc {
   font-size: 13.5px;
   color: #475569;
   line-height: 1.6;
   margin: 0;
 }
 
-.dark-theme .status-desc {
+.dark-theme .status-banner-desc {
   color: #94a3b8;
 }
 
-.merchant-success-alert {
-  background: #dcfce7;
-  color: #166534;
-  border: 1px solid #86efac;
-  border-radius: 14px;
-  padding: 14px 18px;
-  margin-bottom: 20px;
+.status-banner-meta {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 14px;
-  font-weight: 500;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  font-size: 12.5px;
+  color: #64748b;
+  white-space: nowrap;
 }
 
-.close-alert-btn {
-  background: none;
-  border: none;
-  font-size: 16px;
-  cursor: pointer;
+.dark-theme .status-banner-meta {
+  color: #94a3b8;
+}
+
+.merchant-success-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 16px;
+  padding: 16px 18px;
+  margin-bottom: 24px;
+}
+
+.dark-theme .merchant-success-box {
+  background: #052e1a;
+  border-color: #065f46;
+}
+
+.success-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.success-title {
+  font-size: 14.5px;
+  font-weight: 700;
   color: #166534;
+  margin: 0 0 4px 0;
 }
 
-.merchant-form-card {
+.dark-theme .success-title {
+  color: #6ee7b7;
+}
+
+.success-desc {
+  font-size: 13px;
+  color: #166534;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.dark-theme .success-desc {
+  color: #a7f3d0;
+}
+
+.merchant-card-form {
   background: #ffffff;
   border-radius: 24px;
   padding: 32px 28px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
 }
 
-.dark-theme .merchant-form-card {
+.dark-theme .merchant-card-form {
   background: #1a2027;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
-.form-card-title {
+.form-section-title {
   font-size: 20px;
   font-weight: 700;
   color: #123e2f;
-  margin: 0 0 24px 0;
-  border-bottom: 2px solid #e2e8f0;
-  padding-bottom: 12px;
+  margin: 0 0 8px 0;
 }
 
-.dark-theme .form-card-title {
+.dark-theme .form-section-title {
   color: #34d399;
+}
+
+.form-section-desc {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0 0 24px 0;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #e2e8f0;
+  line-height: 1.6;
+}
+
+.dark-theme .form-section-desc {
+  color: #94a3b8;
   border-bottom-color: #334155;
 }
 
@@ -1233,12 +1289,12 @@
   gap: 28px;
 }
 
-.merchant-input-group {
+.form-field-group {
   margin-bottom: 16px;
   text-align: left;
 }
 
-.merchant-label {
+.form-input-label {
   display: block;
   font-size: 13px;
   font-weight: 600;
@@ -1246,11 +1302,13 @@
   color: #334155;
 }
 
-.dark-theme .merchant-label {
+.dark-theme .form-input-label {
   color: #cbd5e1;
 }
 
-.merchant-input {
+.merchant-text-input,
+.merchant-select-input,
+.merchant-textarea-input {
   width: 100%;
   padding: 12px 14px;
   border-radius: 12px;
@@ -1264,25 +1322,37 @@
   transition: all 0.2s;
 }
 
-.merchant-input:focus {
+.merchant-select-input {
+  cursor: pointer;
+}
+
+.merchant-textarea-input {
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.merchant-text-input:focus,
+.merchant-select-input:focus,
+.merchant-textarea-input:focus {
   border-color: #123e2f;
   background: #ffffff;
   box-shadow: 0 0 0 3px rgba(18, 62, 47, 0.1);
 }
 
-.dark-theme .merchant-input {
+.dark-theme .merchant-text-input,
+.dark-theme .merchant-select-input,
+.dark-theme .merchant-textarea-input {
   background: #12161c;
   border-color: #334155;
   color: #f1f5f9;
 }
 
-.dark-theme .merchant-input:focus {
+.dark-theme .merchant-text-input:focus,
+.dark-theme .merchant-select-input:focus,
+.dark-theme .merchant-textarea-input:focus {
   border-color: #34d399;
+  background: #171d25;
   box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.15);
-}
-
-.merchant-textarea {
-  resize: vertical;
 }
 
 .form-two-col {
@@ -1291,174 +1361,211 @@
   gap: 12px;
 }
 
-.gps-section-box {
-  background: #f1f5f9;
-  border-radius: 14px;
-  padding: 14px;
-  margin-bottom: 16px;
-}
-
-.dark-theme .gps-section-box {
-  background: #12171f;
-}
-
-.gps-header {
+.gps-label-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
-.gps-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #123e2f;
-}
-
-.dark-theme .gps-title {
-  color: #34d399;
-}
-
-.btn-fetch-gps {
+.gps-fetch-btn {
   background: #123e2f;
   color: #ffffff;
   border: none;
-  padding: 6px 12px;
-  border-radius: 8px;
+  padding: 7px 14px;
+  border-radius: 10px;
   font-size: 12px;
   font-family: 'Prompt', sans-serif;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
 }
 
-.dark-theme .btn-fetch-gps {
+.gps-fetch-btn:hover:not(:disabled) {
+  background: #0d2e23;
+}
+
+.gps-fetch-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.dark-theme .gps-fetch-btn {
   background: #059669;
 }
 
-.gps-sub-label {
-  font-size: 11.5px;
-  color: #64748b;
-  display: block;
-  margin-bottom: 4px;
+.dark-theme .gps-fetch-btn:hover:not(:disabled) {
+  background: #10b981;
 }
 
-.preview-image-box {
-  margin-top: 8px;
-  border-radius: 12px;
-  overflow: hidden;
-  height: 120px;
+.gps-inputs-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
-.cover-img-preview {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.form-action-footer {
+  display: flex;
+  align-items: stretch;
 }
 
-.vr-upload-section {
+.form-action-footer .merchant-save-btn {
+  flex: 1;
+  width: auto;
+}
+
+.merchant-recent-reviews-box {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 20px 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.dark-theme .merchant-recent-reviews-box {
+  background: #1a2027;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.review-item-card {
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.dark-theme .review-item-card {
+  background: #12161c;
+}
+
+.vr-upload-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   background: #f0fdf4;
-  border: 1.5px dashed #86efac;
-  border-radius: 18px;
-  padding: 18px;
-  margin-bottom: 20px;
+  border: 2px dashed #86efac;
+  border-radius: 20px;
+  padding: 48px 24px;
 }
 
-.dark-theme .vr-upload-section {
-  background: #064e3b22;
+.dark-theme .vr-upload-dropzone {
+  background: #052e1a;
   border-color: #065f46;
 }
 
-.vr-section-badge {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: #166534;
-  margin-bottom: 6px;
-}
-
-.dark-theme .vr-section-badge {
-  color: #6ee7b7;
-}
-
-.vr-section-hint {
-  font-size: 12px;
-  color: #4b5563;
-  margin: 0 0 14px 0;
-  line-height: 1.4;
-}
-
-.dark-theme .vr-section-hint {
-  color: #9ca3af;
-}
-
-.vr-preset-options {
+.mode-toggle-row {
   display: flex;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
-.vr-preset-btn {
-  flex: 1;
-  padding: 8px;
+.mode-toggle-btn {
+  padding: 6px 12px;
   border-radius: 10px;
   border: 1.5px solid #cbd5e1;
-  background: #ffffff;
+  background: #f8fafc;
+  color: #334155;
   font-family: 'Prompt', sans-serif;
   font-size: 12px;
   font-weight: 600;
-  color: #334155;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.vr-preset-btn.selected {
+.mode-toggle-btn.active {
   background: #123e2f;
-  color: #ffffff;
   border-color: #123e2f;
+  color: #ffffff;
 }
 
-.dark-theme .vr-preset-btn {
-  background: #1a2027;
+.dark-theme .mode-toggle-btn {
+  background: #12161c;
   border-color: #334155;
-  color: #e2e8f0;
+  color: #cbd5e1;
 }
 
-.dark-theme .vr-preset-btn.selected {
+.dark-theme .mode-toggle-btn.active {
   background: #059669;
   border-color: #059669;
+  color: #022c22;
 }
 
-.vr-demo-frame {
-  margin-top: 12px;
-  background: rgba(18, 62, 47, 0.08);
-  border-radius: 12px;
-  padding: 12px;
-}
-
-.dark-theme .vr-demo-frame {
-  background: rgba(52, 211, 153, 0.1);
-}
-
-.vr-demo-badge {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: #123e2f;
-  margin-bottom: 6px;
-}
-
-.dark-theme .vr-demo-badge {
-  color: #34d399;
-}
-
-.vr-feature-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.upload-status-hint {
   font-size: 11.5px;
-  color: #374151;
+  color: #64748b;
+  margin: 6px 0 0 0;
 }
 
-.dark-theme .vr-feature-tags {
-  color: #cbd5e1;
+.dark-theme .upload-status-hint {
+  color: #94a3b8;
+}
+
+.image-preview-thumb {
+  display: block;
+  margin-top: 10px;
+  max-height: 110px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.cancel-edit-btn {
+  background: transparent;
+  color: #64748b;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 0 20px;
+  font-family: 'Prompt', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dark-theme .cancel-edit-btn {
+  color: #94a3b8;
+  border-color: #334155;
+}
+
+.my-place-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.my-place-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.my-place-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 6px 0;
+}
+
+.my-place-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.my-place-card-details {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 12px;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.8;
+}
+
+.dark-theme .my-place-card-details {
+  border-top-color: #334155;
+  color: #94a3b8;
 }
 
 .merchant-save-btn {

@@ -35,6 +35,9 @@ env/
 ENV/
 backend_AI/__pycache__/
 
+# User-uploaded merchant photos / VR panoramas (local disk storage)
+backend_AI/uploads/
+
 # Logs
 logs/
 *.log

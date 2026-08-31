@@ -39,11 +39,13 @@ function App() {
   const initialRole = localStorage.getItem('userRole');
   
   const [currentScreen, setCurrentScreen] = useState(
-    !initialUser 
-      ? 'login' 
-      : (initialRole === 'business' 
-          ? 'merchant-add-poi' 
-          : (!initialPref ? 'onboarding' : 'home'))
+    !initialUser
+      ? 'login'
+      : initialRole === 'business'
+      ? 'merchant-add-poi'
+      : initialRole === 'admin'
+      ? 'admin'
+      : (!initialPref ? 'onboarding' : 'home')
   );
   const [previousScreen, setPreviousScreen] = useState('home');
 
@@ -129,8 +131,10 @@ function App() {
     );
   };
 
-  const handleLogin = async () => {
-    if (!inputName.trim() || !inputEmail.trim()) {
+  const handleLogin = async (overrideName, overrideEmail) => {
+    const nameToUse = (overrideName ?? inputName).trim();
+    const emailToUse = (overrideEmail ?? inputEmail).trim();
+    if (!nameToUse || !emailToUse) {
       alert('กรุณากรอกชื่อ และอีเมลให้ครบถ้วนครับ');
       return;
     }
@@ -138,7 +142,18 @@ function App() {
     try {
       const storedRole = localStorage.getItem('userRole');
 
-      const response = await axios.post(`${API_BASE_URL}/login_user`, { name: inputName.trim(), email: inputEmail.trim() });
+      const response = await axios.post(`${API_BASE_URL}/login_user`, { name: nameToUse, email: emailToUse });
+
+      if (response.data.status === 'admin') {
+        localStorage.setItem('userName', nameToUse);
+        localStorage.setItem('userEmail', emailToUse);
+        localStorage.setItem('userRole', 'admin');
+        sessionStorage.setItem('adminKey', response.data.adminKey || '');
+        setCurrentScreen('admin');
+        setIsLoggingIn(false);
+        return;
+      }
+
       if (response.data.status === 'name_mismatch') {
         alert(response.data.message);
         setIsLoggingIn(false);
@@ -152,8 +167,8 @@ function App() {
         return;
       }
 
-      localStorage.setItem('userName', inputName.trim());
-      localStorage.setItem('userEmail', inputEmail.trim());
+      localStorage.setItem('userName', nameToUse);
+      localStorage.setItem('userEmail', emailToUse);
 
       if (storedRole === 'business') {
         setCurrentScreen('merchant-add-poi');
@@ -166,8 +181,8 @@ function App() {
       // Fallback for offline / demo mode
       const storedRole = localStorage.getItem('userRole');
 
-      localStorage.setItem('userName', inputName.trim());
-      localStorage.setItem('userEmail', inputEmail.trim());
+      localStorage.setItem('userName', nameToUse);
+      localStorage.setItem('userEmail', emailToUse);
 
       if (storedRole === 'business') {
         setCurrentScreen('merchant-add-poi');
@@ -179,21 +194,23 @@ function App() {
     }
   };
 
-  const handleAdminLogin = async (email, password) => {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/login_admin`, { email, password });
-      if (response.data.status === 'success') {
-        localStorage.setItem('userName', 'ผู้ดูแลระบบ');
-        localStorage.setItem('userEmail', email.trim());
-        localStorage.setItem('userRole', 'admin');
-        sessionStorage.setItem('adminKey', password);
-        setCurrentScreen('admin');
-        return { success: true };
-      }
-      return { success: false, message: response.data.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' };
-    } catch (error) {
-      return { success: false, message: 'ไม่สามารถเชื่อมต่อระบบยืนยันตัวตนได้ กรุณาลองใหม่ภายหลัง' };
+  const DEMO_ACCOUNTS = {
+    tourist: { name: 'นักท่องเที่ยว (Demo)', email: 'demo.tourist@suratsmarttour.local' },
+    business: { name: 'ผู้ประกอบการ (Demo)', email: 'demo.business@suratsmarttour.local' },
+    admin: { name: 'ผู้ดูแลระบบ', email: 'admin@surat.go.th' },
+  };
+
+  const handleDemoLogin = (role) => {
+    const account = DEMO_ACCOUNTS[role];
+    if (!account) return;
+    if (role === 'business') {
+      localStorage.setItem('userRole', 'business');
+    } else if (role === 'tourist') {
+      localStorage.removeItem('userRole');
     }
+    setInputName(account.name);
+    setInputEmail(account.email);
+    handleLogin(account.name, account.email);
   };
 
   const handleRegisterTouristSuccess = (userData) => {
@@ -319,6 +336,11 @@ function App() {
     }
     setFinalRoutePlan(route);
     setCurrentScreen('final-route');
+
+    axios.post(`${API_BASE_URL}/track/trip_add`, {
+      place_ids: route.map((p) => p.id),
+      owner_email: localStorage.getItem('userEmail') || '',
+    }).catch(() => {});
   };
 
   const handleViewDetail = (place, fromScreen) => {
@@ -330,6 +352,7 @@ function App() {
   const openVRMode = (place) => {
     setCurrentVrPlace(place);
     setVrMode(true);
+    axios.post(`${API_BASE_URL}/track/vr_view`, { place_id: place.id }).catch(() => {});
   };
 
   const calculateEstimatedTime = (distanceKm) => {
@@ -375,7 +398,7 @@ function App() {
           theme={theme}
           toggleTheme={toggleTheme}
           onGoToRegister={() => setCurrentScreen('register')}
-          onAdminLogin={handleAdminLogin}
+          onDemoLogin={handleDemoLogin}
         />
       )}
 

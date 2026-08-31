@@ -7,14 +7,17 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 import os
 import random
+import shutil
+import uuid
 from datetime import datetime
 import warnings
 import math
@@ -26,10 +29,18 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ==========================================
+# 🖼️ ไฟล์ที่ผู้ประกอบการอัปโหลด (รูปภาพ / VR 360°)
+# ==========================================
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+ALLOWED_UPLOAD_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
 # ==========================================
 # 📊 1. ส่วนเชื่อมต่อ MongoDB 
@@ -47,6 +58,7 @@ if not MONGO_URI:
         "backend_AI/.env and fill in your own MongoDB connection string."
     )
 
+ADMIN_NAME = os.getenv("ADMIN_NAME", "")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 
@@ -78,8 +90,11 @@ def load_places_db():
             
             for place in places_to_insert:
                 query = {"id": int(place["id"])}
+                # $setOnInsert (not $set) so this seed-sync never clobbers a place
+                # an admin has since edited through the Admin panel - the CSV only
+                # fills in places that don't exist in MongoDB yet.
                 update_data = {
-                    "$set": {
+                    "$setOnInsert": {
                         "id": int(place["id"]),
                         "name": place["name"],
                         "tag": place["tag"],
@@ -89,7 +104,8 @@ def load_places_db():
                         "travelTime": place["travelTime"],
                         "description": place["description"],
                         "lat": float(place["lat"]),
-                        "lng": float(place["lng"])
+                        "lng": float(place["lng"]),
+                        "price": "",
                     }
                 }
                 places_collection.update_one(query, update_data, upsert=True)
@@ -173,10 +189,6 @@ class LoginRequest(BaseModel):
     name: str
     email: str
 
-class AdminLoginRequest(BaseModel):
-    email: str
-    password: str
-
 class MerchantPlaceSubmission(BaseModel):
     ownerEmail: str
     ownerName: str = ""
@@ -193,10 +205,66 @@ class MerchantPlaceSubmission(BaseModel):
     lng: float = 0.0
     image: str = ""
     vr_image: str = ""
+    price: str = ""
 
 class MerchantPlaceStatusUpdate(BaseModel):
     status: str
     reason: str = ""
+
+class MerchantPlaceEditRequest(BaseModel):
+    ownerEmail: str
+    ownerName: str = ""
+    businessName: str = ""
+    businessType: str = ""
+    businessLicense: str = ""
+    businessPhone: str = ""
+    name: str
+    tag: str = ""
+    location: str = ""
+    travelTime: str = ""
+    description: str = ""
+    lat: float = 0.0
+    lng: float = 0.0
+    image: str = ""
+    vr_image: str = ""
+    price: str = ""
+
+class AdminPlaceUpsert(BaseModel):
+    name: str
+    tag: str = ""
+    location: str = ""
+    travelTime: str = ""
+    description: str = ""
+    lat: float = 0.0
+    lng: float = 0.0
+    image: str = ""
+    vr_image: str = ""
+    price: str = ""
+
+class VrViewTrack(BaseModel):
+    place_id: str
+
+class RatingTrack(BaseModel):
+    place_id: str
+    rating: int
+
+class TripAddTrack(BaseModel):
+    place_ids: list
+    owner_email: str = ""
+
+class UserStatusUpdate(BaseModel):
+    status: str
+
+def find_place_and_increment(place_id: str, inc_fields: dict) -> bool:
+    """Increments counters on whichever collection (curated or merchant) holds this place id."""
+    try:
+        result = places_collection.update_one({"id": int(place_id)}, {"$inc": inc_fields})
+        if result.matched_count > 0:
+            return True
+    except (ValueError, TypeError):
+        pass
+    result = merchant_places_collection.update_one({"id": place_id}, {"$inc": inc_fields})
+    return result.matched_count > 0
 
 def verify_admin_key(x_admin_key: str = Header(None)):
     if not ADMIN_PASSWORD or x_admin_key != ADMIN_PASSWORD:
@@ -250,6 +318,42 @@ def get_merchant_places(owner_email: str = None):
     )
     return {"status": "success", "places": items}
 
+@app.put("/merchant/places/{place_id}")
+def edit_merchant_place(place_id: str, body: MerchantPlaceEditRequest):
+    existing = merchant_places_collection.find_one({"id": place_id})
+    if not existing:
+        return {"status": "error", "message": "ไม่พบรายการนี้"}
+    if existing.get("ownerEmail") != body.ownerEmail:
+        raise HTTPException(status_code=403, detail="ไม่มีสิทธิ์แก้ไขรายการนี้")
+
+    update_fields = body.dict()
+    update_fields["status"] = "pending"
+    update_fields["rejectReason"] = ""
+    merchant_places_collection.update_one({"id": place_id}, {"$set": update_fields})
+    return {"status": "success"}
+
+@app.delete("/merchant/places/{place_id}")
+def delete_merchant_place(place_id: str, owner_email: str):
+    existing = merchant_places_collection.find_one({"id": place_id})
+    if not existing:
+        return {"status": "error", "message": "ไม่พบรายการนี้"}
+    if existing.get("ownerEmail") != owner_email:
+        raise HTTPException(status_code=403, detail="ไม่มีสิทธิ์ลบรายการนี้")
+
+    merchant_places_collection.delete_one({"id": place_id})
+    return {"status": "success"}
+
+@app.post("/merchant/upload")
+async def upload_merchant_file(file: UploadFile = File(...)):
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in ALLOWED_UPLOAD_EXTENSIONS:
+        return {"status": "error", "message": "รองรับเฉพาะไฟล์ภาพ JPG, PNG, WEBP เท่านั้น"}
+    filename = f"{uuid.uuid4().hex}{ext}"
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    return {"status": "success", "url": f"/uploads/{filename}"}
+
 @app.get("/admin/merchant_places")
 def admin_list_merchant_places(x_admin_key: str = Header(None)):
     verify_admin_key(x_admin_key)
@@ -270,16 +374,96 @@ def admin_update_merchant_place_status(place_id: str, body: MerchantPlaceStatusU
         return {"status": "error", "message": "ไม่พบรายการนี้"}
     return {"status": "success"}
 
-@app.post("/login_admin")
-def login_admin(req: AdminLoginRequest):
-    if not ADMIN_EMAIL or not ADMIN_PASSWORD:
-        return {"status": "error", "message": "ยังไม่ได้ตั้งค่าบัญชีผู้ดูแลระบบบนเซิร์ฟเวอร์ (ADMIN_EMAIL/ADMIN_PASSWORD)"}
-    if req.email.strip().lower() == ADMIN_EMAIL.strip().lower() and req.password == ADMIN_PASSWORD:
-        return {"status": "success"}
-    return {"status": "error", "message": "อีเมลหรือรหัสผ่านไม่ถูกต้อง"}
+# ==========================================
+# 🗺️ ระบบจัดการฐานข้อมูลสถานที่ท่องเที่ยว (Admin: Manage POIs)
+# ==========================================
+
+@app.get("/admin/places")
+def admin_list_places(x_admin_key: str = Header(None)):
+    verify_admin_key(x_admin_key)
+    load_places_db()
+    return {"status": "success", "places": ATTRACTIONS_DB}
+
+@app.post("/admin/places")
+def admin_create_place(body: AdminPlaceUpsert, x_admin_key: str = Header(None)):
+    verify_admin_key(x_admin_key)
+    last = places_collection.find_one(sort=[("id", -1)])
+    new_id = (last["id"] + 1) if last else 1
+    doc = body.dict()
+    doc["id"] = new_id
+    places_collection.insert_one(doc)
+    doc.pop("_id", None)
+    load_places_db()
+    return {"status": "success", "place": doc}
+
+@app.put("/admin/places/{place_id}")
+def admin_update_place(place_id: int, body: AdminPlaceUpsert, x_admin_key: str = Header(None)):
+    verify_admin_key(x_admin_key)
+    result = places_collection.update_one({"id": place_id}, {"$set": body.dict()})
+    if result.matched_count == 0:
+        return {"status": "error", "message": "ไม่พบสถานที่นี้"}
+    load_places_db()
+    return {"status": "success"}
+
+# ==========================================
+# 📈 ระบบเก็บสถิติการใช้งานจริง (VR views / Trip adds / Ratings)
+# ==========================================
+
+@app.post("/track/vr_view")
+def track_vr_view(body: VrViewTrack):
+    find_place_and_increment(body.place_id, {"vrViews": 1})
+    return {"status": "success"}
+
+@app.post("/track/rating")
+def track_rating(body: RatingTrack):
+    if body.rating < 1 or body.rating > 5:
+        return {"status": "error", "message": "คะแนนต้องอยู่ระหว่าง 1-5"}
+    find_place_and_increment(body.place_id, {"ratingSum": body.rating, "ratingCount": 1})
+    return {"status": "success"}
+
+@app.post("/track/trip_add")
+def track_trip_add(body: TripAddTrack):
+    for place_id in body.place_ids:
+        find_place_and_increment(str(place_id), {"tripAdds": 1})
+    if body.owner_email:
+        users_collection.update_one({"email": body.owner_email}, {"$inc": {"tripsCreated": 1}})
+    return {"status": "success"}
+
+# ==========================================
+# 👥 ระบบจัดการผู้ใช้งาน (Admin: User Management)
+# ==========================================
+
+@app.get("/admin/users")
+def admin_list_users(x_admin_key: str = Header(None)):
+    verify_admin_key(x_admin_key)
+    users = list(users_collection.find({}, {"_id": 0}))
+    for u in users:
+        prefs = u.get("preferences", "") or ""
+        u["role"] = "business" if prefs.startswith("business:") else "tourist"
+        u.setdefault("status", "active")
+        u.setdefault("tripsCreated", 0)
+    return {"status": "success", "users": users}
+
+@app.post("/admin/users/{email}/status")
+def admin_update_user_status(email: str, body: UserStatusUpdate, x_admin_key: str = Header(None)):
+    verify_admin_key(x_admin_key)
+    if body.status not in ("active", "suspended"):
+        return {"status": "error", "message": "สถานะไม่ถูกต้อง"}
+    result = users_collection.update_one({"email": email}, {"$set": {"status": body.status}})
+    if result.matched_count == 0:
+        return {"status": "error", "message": "ไม่พบผู้ใช้งานนี้"}
+    return {"status": "success"}
 
 @app.post("/login_user")
 def login_user(req: LoginRequest):
+    if (
+        ADMIN_NAME
+        and ADMIN_EMAIL
+        and req.name.strip().lower() == ADMIN_NAME.strip().lower()
+        and req.email.strip().lower() == ADMIN_EMAIL.strip().lower()
+    ):
+        return {"status": "admin", "adminKey": ADMIN_PASSWORD}
+
     try:
         user = users_collection.find_one({"email": req.email.strip()})
         if user:

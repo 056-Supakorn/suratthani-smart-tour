@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import axios from 'axios';
+import { API_BASE_URL } from '../apiConfig';
 import ThemeToggleBtn from './ThemeToggleBtn';
 
 export default function DetailScreen({
@@ -10,13 +12,23 @@ export default function DetailScreen({
 }) {
   const [userRating, setUserRating] = useState(0);
   const [feedbackSent, setFeedbackSent] = useState(false);
+  const [ratingSum, setRatingSum] = useState(selectedAttraction?.ratingSum || 0);
+  const [ratingCount, setRatingCount] = useState(selectedAttraction?.ratingCount || 0);
 
   const handleRate = (star) => {
     setUserRating(star);
     setFeedbackSent(true);
+    setRatingSum((prev) => prev + star);
+    setRatingCount((prev) => prev + 1);
+    axios.post(`${API_BASE_URL}/track/rating`, {
+      place_id: selectedAttraction.id,
+      rating: star,
+    }).catch(() => {});
   };
 
   if (!selectedAttraction) return null;
+
+  const avgRating = ratingCount > 0 ? (ratingSum / ratingCount).toFixed(1) : null;
 
   return (
     <div className="home-root-wrapper fade-in">
@@ -78,11 +90,19 @@ export default function DetailScreen({
                 </p>
               </div>
 
-              {selectedAttraction.travelTime && (
-                <span className="filter-badge approved" style={{ fontSize: '13px', padding: '8px 16px' }}>
-                  ⏱️ เวลาเปิด: {selectedAttraction.travelTime}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
+                {selectedAttraction.travelTime && (
+                  <span className="filter-badge approved" style={{ fontSize: '13px', padding: '8px 16px' }}>
+                    ⏱️ เวลาเปิด: {selectedAttraction.travelTime}
+                  </span>
+                )}
+                <span className="filter-badge pending" style={{ fontSize: '13px', padding: '8px 16px' }}>
+                  💰 ค่าเข้า: {selectedAttraction.price ? selectedAttraction.price : 'ฟรี'}
                 </span>
-              )}
+                <span className="business-type-tag" style={{ fontSize: '13px', padding: '8px 16px' }}>
+                  ⭐ {avgRating ? `${avgRating} (${ratingCount} รีวิว)` : 'ยังไม่มีรีวิว'}
+                </span>
+              </div>
             </div>
 
             {/* Description */}

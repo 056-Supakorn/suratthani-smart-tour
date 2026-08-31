@@ -366,14 +366,6 @@ function App() {
 
   return (
     <div className={`app-main ${theme}-theme`}>
-      {currentScreen !== 'login' && currentScreen !== 'register' && currentScreen !== 'merchant-add-poi' && currentScreen !== 'onboarding' && currentScreen !== 'home' && currentScreen !== 'admin' && (
-        <div style={{ maxWidth: '1000px', margin: '0 auto', position: 'relative', height: 0, zIndex: 1001 }}>
-          <button className="theme-toggle-btn" onClick={toggleTheme} title="สลับโหมดสว่าง/มืด" style={{ position: 'absolute', top: '20px', right: '15px' }}>
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
-        </div>
-      )}
-
       {currentScreen === 'login' && (
         <LoginScreen
           inputName={inputName}

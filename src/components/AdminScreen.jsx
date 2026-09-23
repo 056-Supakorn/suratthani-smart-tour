@@ -49,7 +49,7 @@ export default function AdminScreen({
       const formData = new FormData();
       formData.append('file', file);
       const response = await axios.post(`${API_BASE_URL}/merchant/upload`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: { 'Content-Type': 'multipart/form-data', ...getAdminHeaders() },
       });
       if (response.data.status === 'success') {
         const url = `${API_BASE_URL}${response.data.url}`;

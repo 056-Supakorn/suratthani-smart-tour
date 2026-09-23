@@ -65,9 +65,8 @@ export default function MerchantAddPoiScreen({
     if (!ownerEmail) return;
     setIsLoadingMyPlaces(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/merchant/places`, {
-        params: { owner_email: ownerEmail },
-      });
+      // the backend identifies the owner from the login token
+      const response = await axios.get(`${API_BASE_URL}/merchant/places`);
       if (response.data.status === 'success') {
         setMyPlaces(response.data.places);
       }
@@ -301,9 +300,7 @@ export default function MerchantAddPoiScreen({
   const handleDeletePlace = async (place) => {
     if (!window.confirm(`ต้องการลบ "${place.name}" ใช่หรือไม่? การลบไม่สามารถย้อนกลับได้`)) return;
     try {
-      const response = await axios.delete(`${API_BASE_URL}/merchant/places/${place.id}`, {
-        params: { owner_email: ownerEmail },
-      });
+      const response = await axios.delete(`${API_BASE_URL}/merchant/places/${place.id}`);
       if (response.data.status === 'success') {
         if (editingPlaceId === place.id) cancelEditPlace();
         await fetchMyPlaces();

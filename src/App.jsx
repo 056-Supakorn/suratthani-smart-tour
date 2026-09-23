@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { API_BASE_URL } from './apiConfig';
+import { API_BASE_URL, getAuthToken, setAuthToken } from './apiConfig';
 import { useSessionState, readSessionState, clearSessionState } from './sessionState';
 import './App.css';
 import './Login.css';
@@ -38,8 +38,18 @@ const moodOptions = [
 const LOGGED_OUT_SCREENS = ['login', 'register'];
 const TOURIST_SCREENS = ['onboarding', 'home', 'search-results', 'ai-input', 'ai-result', 'final-route', 'detail'];
 
+// ผู้ใช้ที่ล็อกอินไว้ก่อนระบบมี token (หรือล็อกอินแบบออฟไลน์) จะเรียก API ที่ต้องยืนยันตัวตนไม่ได้
+// จึงให้ออกจากระบบแล้วล็อกอินใหม่หนึ่งครั้ง (แอดมินใช้ adminKey แยกต่างหาก ไม่ได้รับผลกระทบ)
+function dropSessionWithoutToken() {
+  if (localStorage.getItem('userName') && localStorage.getItem('userRole') !== 'admin' && !getAuthToken()) {
+    localStorage.clear();
+    clearSessionState();
+  }
+}
+
 // เลือกหน้าที่จะแสดงตอนเปิด/รีเฟรช: ใช้หน้าที่บันทึกไว้ถ้ายังใช้ได้ ไม่งั้นใช้หน้าเริ่มต้นตามบทบาท
 function resolveInitialScreen() {
+  dropSessionWithoutToken();
   const user = localStorage.getItem('userName');
   const pref = localStorage.getItem('userPref');
   const role = localStorage.getItem('userRole');
@@ -208,22 +218,27 @@ function App() {
         return;
       }
 
-      localStorage.setItem('userEmail', emailToUse);
-
-      if (response.data.status === 'returning_user') {
-        const role = response.data.role || storedRole || 'tourist';
-        localStorage.setItem('userName', response.data.userData?.name || emailToUse);
-        localStorage.setItem('userRole', role);
-        if (response.data.userData) {
-          localStorage.setItem('userData', JSON.stringify(response.data.userData));
-        }
-        localStorage.setItem('userPref', response.data.pref || '');
-        setLastPref(response.data.pref || '');
-
-        setCurrentScreen(role === 'business' ? 'merchant-add-poi' : 'home');
-      } else if (storedRole === 'business') {
-        setCurrentScreen('merchant-add-poi');
+      if (response.data.status !== 'returning_user') {
+        alert(response.data.message || 'ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง');
+        setIsLoggingIn(false);
+        return;
       }
+
+      const role = response.data.role || storedRole || 'tourist';
+      setAuthToken(response.data.token);
+      if (response.data.passwordSet) {
+        alert('ตั้งรหัสผ่านสำหรับบัญชีนี้เรียบร้อยแล้ว ครั้งต่อไปกรุณาเข้าสู่ระบบด้วยรหัสผ่านนี้');
+      }
+      localStorage.setItem('userEmail', emailToUse);
+      localStorage.setItem('userName', response.data.userData?.name || emailToUse);
+      localStorage.setItem('userRole', role);
+      if (response.data.userData) {
+        localStorage.setItem('userData', JSON.stringify(response.data.userData));
+      }
+      localStorage.setItem('userPref', response.data.pref || '');
+      setLastPref(response.data.pref || '');
+
+      setCurrentScreen(role === 'business' ? 'merchant-add-poi' : 'home');
     } catch (error) {
       // Fallback for offline / demo mode
       const storedRole = localStorage.getItem('userRole');
@@ -375,9 +390,9 @@ function App() {
     setFinalRoutePlan(route);
     setCurrentScreen('final-route');
 
+    // ผู้ใช้ถูกระบุจาก token ที่แนบไปอัตโนมัติ
     axios.post(`${API_BASE_URL}/track/trip_add`, {
       place_ids: route.map((p) => p.id),
-      owner_email: localStorage.getItem('userEmail') || '',
     }).catch(() => {});
   };
 

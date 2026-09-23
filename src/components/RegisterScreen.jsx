@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { API_BASE_URL } from '../apiConfig';
+import { API_BASE_URL, setAuthToken } from '../apiConfig';
 
 export default function RegisterScreen({
   theme,
@@ -100,15 +100,10 @@ export default function RegisterScreen({
             }),
       };
 
-      // Save to localStorage
-      localStorage.setItem('userName', fullName.trim());
-      localStorage.setItem('userEmail', email.trim());
-      localStorage.setItem('userRole', role);
-      localStorage.setItem('userData', JSON.stringify(userData));
-
-      // Attempt to save to backend if available
+      // Create the account first - only a successful registration logs the user in
+      let response;
       try {
-        await axios.post(`${API_BASE_URL}/save_user`, {
+        response = await axios.post(`${API_BASE_URL}/save_user`, {
           name: fullName.trim(),
           email: email.trim(),
           preferences: role === 'tourist' ? `age:${age},gender:${gender}` : `business:${businessType}`,
@@ -117,9 +112,21 @@ export default function RegisterScreen({
           password: password,
         });
       } catch (err) {
-        // Fallback gracefully if backend is offline
-        console.log('Backend sync skipped, stored locally.');
+        setIsLoading(false);
+        setErrorMessage('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง');
+        return;
       }
+      if (response.data.status !== 'success') {
+        setIsLoading(false);
+        setErrorMessage(response.data.message || 'เกิดข้อผิดพลาดในการลงทะเบียน กรุณาลองใหม่อีกครั้ง');
+        return;
+      }
+
+      setAuthToken(response.data.token);
+      localStorage.setItem('userName', fullName.trim());
+      localStorage.setItem('userEmail', email.trim());
+      localStorage.setItem('userRole', role);
+      localStorage.setItem('userData', JSON.stringify(userData));
 
       setIsLoading(false);
 

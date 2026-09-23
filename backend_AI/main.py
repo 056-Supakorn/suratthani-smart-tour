@@ -7,7 +7,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-from fastapi import FastAPI, Header, HTTPException, UploadFile, File
+from fastapi import FastAPI, Depends, Header, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
@@ -15,9 +15,12 @@ from typing import Optional
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
+import base64
 import hashlib
 import hmac
+import json
 import os
+import time
 import random
 import re
 import secrets
@@ -58,6 +61,7 @@ app.add_middleware(
 # startup to migrate files uploaded before the switch.
 UPLOAD_DIR = "uploads"
 ALLOWED_UPLOAD_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # ภาพ VR 360° ความละเอียดสูงมักอยู่ราว 5-12 MB
 UPLOAD_CONTENT_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
 
 # ==========================================
@@ -355,6 +359,59 @@ def verify_password(password: str, stored_hash: str) -> bool:
     expected = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt), PBKDF2_ITERATIONS)
     return hmac.compare_digest(expected.hex(), digest_hex)
 
+MIN_PASSWORD_LENGTH = 6
+LEGACY_SET_PASSWORD_MESSAGE = (
+    f"บัญชีนี้ยังไม่มีรหัสผ่าน กรุณากรอกรหัสผ่านใหม่ที่ต้องการ (อย่างน้อย {MIN_PASSWORD_LENGTH} ตัวอักษร) "
+    "แล้วกดเข้าสู่ระบบอีกครั้ง ระบบจะตั้งเป็นรหัสผ่านของบัญชีนี้"
+)
+
+# ==========================================
+# 🔐 Session token: ออกให้ตอนล็อกอิน/ลงทะเบียน แล้วแนบมาทุก request ที่ต้องรู้ว่าเป็นใคร
+# (เดิมเชื่ออีเมลที่ฝั่งหน้าเว็บส่งมาเฉยๆ ใครรู้อีเมลคนอื่นก็ทำแทนได้)
+# ==========================================
+# SESSION_SECRET ตั้งแยกใน .env ได้; ถ้าไม่ตั้งจะอนุพันธ์จาก secret ที่มีอยู่แล้ว (คงที่ข้าม restart)
+SESSION_SECRET = os.getenv("SESSION_SECRET") or hashlib.sha256(
+    f"session:{MONGO_URI}:{ADMIN_PASSWORD}".encode("utf-8")
+).hexdigest()
+SESSION_TTL_SECONDS = 30 * 24 * 3600
+
+def _sign(payload: str) -> str:
+    return hmac.new(SESSION_SECRET.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+
+def create_session_token(email: str, role: str) -> str:
+    body = json.dumps({"email": email, "role": role, "exp": int(time.time()) + SESSION_TTL_SECONDS})
+    payload = base64.urlsafe_b64encode(body.encode("utf-8")).decode("ascii").rstrip("=")
+    return f"{payload}.{_sign(payload)}"
+
+def read_session_token(token: Optional[str]) -> Optional[dict]:
+    if not token or "." not in token:
+        return None
+    payload, sig = token.rsplit(".", 1)
+    if not hmac.compare_digest(_sign(payload), sig):
+        return None
+    try:
+        data = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(data, dict) or data.get("exp", 0) < time.time() or not data.get("email"):
+        return None
+    return data
+
+def session_from_header(authorization: Optional[str]) -> Optional[dict]:
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    return read_session_token(authorization[len("Bearer "):].strip())
+
+def require_user(authorization: str = Header(None)) -> dict:
+    """Dependency: ต้องล็อกอิน (มี token ที่ถูกต้องและยังไม่หมดอายุ) และบัญชีไม่ถูกระงับ"""
+    session = session_from_header(authorization)
+    if not session:
+        raise HTTPException(status_code=401, detail="กรุณาเข้าสู่ระบบใหม่อีกครั้ง")
+    user = users_collection.find_one({"email": session["email"]}, {"status": 1})
+    if user and user.get("status") == "suspended":
+        raise HTTPException(status_code=403, detail="บัญชีนี้ถูกระงับการใช้งาน")
+    return session
+
 # ==========================================
 # 🌐 API Endpoints
 # ==========================================
@@ -389,9 +446,12 @@ def get_home_places(pref: str = None):
 # 🏪 ระบบร้านค้า (Merchant POI Submission & Moderation)
 # ==========================================
 
+# เจ้าของรายการมาจาก token เสมอ ไม่ใช้ ownerEmail / owner_email ที่ส่งมากับ request
+
 @app.post("/merchant/places")
-def submit_merchant_place(place: MerchantPlaceSubmission):
+def submit_merchant_place(place: MerchantPlaceSubmission, session: dict = Depends(require_user)):
     doc = place.dict()
+    doc["ownerEmail"] = session["email"]
     doc["id"] = "poi_" + str(int(datetime.now().timestamp() * 1000))
     doc["status"] = "pending"
     doc["rejectReason"] = ""
@@ -401,44 +461,53 @@ def submit_merchant_place(place: MerchantPlaceSubmission):
     return {"status": "success", "place": doc}
 
 @app.get("/merchant/places")
-def get_merchant_places(owner_email: str = None):
-    if not owner_email:
-        return {"status": "error", "message": "ต้องระบุ owner_email", "places": []}
+def get_merchant_places(session: dict = Depends(require_user)):
     items = list(
-        merchant_places_collection.find({"ownerEmail": owner_email}, {"_id": 0}).sort("registeredAt", -1)
+        merchant_places_collection.find({"ownerEmail": session["email"]}, {"_id": 0}).sort("registeredAt", -1)
     )
     return {"status": "success", "places": items}
 
 @app.put("/merchant/places/{place_id}")
-def edit_merchant_place(place_id: str, body: MerchantPlaceEditRequest):
+def edit_merchant_place(place_id: str, body: MerchantPlaceEditRequest, session: dict = Depends(require_user)):
     existing = merchant_places_collection.find_one({"id": place_id})
     if not existing:
         return {"status": "error", "message": "ไม่พบรายการนี้"}
-    if existing.get("ownerEmail") != body.ownerEmail:
+    if existing.get("ownerEmail") != session["email"]:
         raise HTTPException(status_code=403, detail="ไม่มีสิทธิ์แก้ไขรายการนี้")
 
     update_fields = body.dict()
+    update_fields["ownerEmail"] = session["email"]
     update_fields["status"] = "pending"
     update_fields["rejectReason"] = ""
     merchant_places_collection.update_one({"id": place_id}, {"$set": update_fields})
     return {"status": "success"}
 
 @app.delete("/merchant/places/{place_id}")
-def delete_merchant_place(place_id: str, owner_email: str):
+def delete_merchant_place(place_id: str, session: dict = Depends(require_user)):
     existing = merchant_places_collection.find_one({"id": place_id})
     if not existing:
         return {"status": "error", "message": "ไม่พบรายการนี้"}
-    if existing.get("ownerEmail") != owner_email:
+    if existing.get("ownerEmail") != session["email"]:
         raise HTTPException(status_code=403, detail="ไม่มีสิทธิ์ลบรายการนี้")
 
     merchant_places_collection.delete_one({"id": place_id})
     return {"status": "success"}
 
 @app.post("/merchant/upload")
-async def upload_merchant_file(file: UploadFile = File(...)):
+async def upload_merchant_file(
+    file: UploadFile = File(...),
+    authorization: str = Header(None),
+    x_admin_key: str = Header(None),
+):
+    # อัปโหลดได้เฉพาะผู้ที่ล็อกอินแล้ว (ร้านค้า) หรือแอดมิน
+    is_admin = bool(ADMIN_PASSWORD) and x_admin_key == ADMIN_PASSWORD
+    if not is_admin:
+        require_user(authorization)
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in ALLOWED_UPLOAD_EXTENSIONS:
         return {"status": "error", "message": "รองรับเฉพาะไฟล์ภาพ JPG, PNG, WEBP เท่านั้น"}
+    if file.size is not None and file.size > MAX_UPLOAD_BYTES:
+        return {"status": "error", "message": f"ไฟล์ใหญ่เกินไป (สูงสุด {MAX_UPLOAD_BYTES // (1024 * 1024)} MB)"}
     filename = f"{uuid.uuid4().hex}{ext}"
     uploads_fs.put(file.file, filename=filename, contentType=UPLOAD_CONTENT_TYPES[ext])
     return {"status": "success", "url": f"/uploads/{filename}"}
@@ -572,11 +641,13 @@ def track_rating(body: RatingTrack):
     return {"status": "success", "learned": learned}
 
 @app.post("/track/trip_add")
-def track_trip_add(body: TripAddTrack):
+def track_trip_add(body: TripAddTrack, authorization: str = Header(None)):
     for place_id in body.place_ids:
         find_place_and_increment(str(place_id), {"tripAdds": 1})
-    if body.owner_email:
-        users_collection.update_one({"email": body.owner_email}, {"$inc": {"tripsCreated": 1}})
+    # นับทริปให้ผู้ใช้จาก token เท่านั้น (owner_email ในตัว request ปลอมได้)
+    session = session_from_header(authorization)
+    if session:
+        users_collection.update_one({"email": session["email"]}, {"$inc": {"tripsCreated": 1}})
     return {"status": "success"}
 
 # ==========================================
@@ -642,11 +713,18 @@ def login_user(req: LoginRequest):
             if user.get("status") == "suspended":
                 return {"status": "suspended", "message": "บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ"}
 
-            # Accounts registered before password support has no passwordHash yet - only
-            # enforce the check once a hash actually exists, so old accounts still work.
             stored_hash = user.get("passwordHash")
-            if stored_hash and not verify_password(req.password or "", stored_hash):
-                return {"status": "invalid_password", "message": "รหัสผ่านไม่ถูกต้อง"}
+            password_set = False
+            if stored_hash:
+                if not verify_password(req.password or "", stored_hash):
+                    return {"status": "invalid_password", "message": "รหัสผ่านไม่ถูกต้อง"}
+            else:
+                # บัญชีเก่าที่สมัครก่อนมีระบบรหัสผ่าน: ห้ามเข้าด้วยอีเมลอย่างเดียวอีกต่อไป
+                # การล็อกอินครั้งแรกหลังจากนี้ต้องตั้งรหัสผ่านให้บัญชีก่อน
+                if len(req.password or "") < MIN_PASSWORD_LENGTH:
+                    return {"status": "invalid_password", "message": LEGACY_SET_PASSWORD_MESSAGE}
+                users_collection.update_one({"email": req_email}, {"$set": {"passwordHash": hash_password(req.password)}})
+                password_set = True
 
             # Determine role
             role = user.get("role")
@@ -669,25 +747,43 @@ def login_user(req: LoginRequest):
                 "status": "returning_user",
                 "pref": user.get("preferences", ""),
                 "role": role,
-                "userData": user_data
+                "userData": user_data,
+                "token": create_session_token(req_email, role),
+                "passwordSet": password_set,
             }
 
-        # Fallback check if user email is registered in merchant places
+        # Fallback: ร้านค้าเก่าที่มีแค่ข้อมูลสถานที่ ไม่มีบัญชีผู้ใช้ -> สร้างบัญชีพร้อมรหัสผ่านตอนล็อกอินครั้งแรก
         merchant = merchant_places_collection.find_one({"ownerEmail": req_email})
         if merchant:
+            if len(req.password or "") < MIN_PASSWORD_LENGTH:
+                return {"status": "invalid_password", "message": LEGACY_SET_PASSWORD_MESSAGE}
+            pref = "business:" + (merchant.get("businessType") or "cafe")
+            user_data = {
+                "name": merchant.get("ownerName", ""),
+                "email": req_email,
+                "businessName": merchant.get("businessName", merchant.get("name", "")),
+                "businessType": merchant.get("businessType", "cafe"),
+                "businessLicense": merchant.get("businessLicense", ""),
+                "businessPhone": merchant.get("businessPhone", ""),
+                "role": "business"
+            }
+            users_collection.insert_one({
+                "name": user_data["name"],
+                "email": req_email,
+                "preferences": pref,
+                "role": "business",
+                "userData": user_data,
+                "passwordHash": hash_password(req.password),
+                "status": "active",
+                "timestamp": datetime.now(),
+            })
             return {
                 "status": "returning_user",
-                "pref": "business:" + (merchant.get("tag") or "cafe"),
+                "pref": pref,
                 "role": "business",
-                "userData": {
-                    "name": merchant.get("ownerName", ""),
-                    "email": merchant.get("ownerEmail", req_email),
-                    "businessName": merchant.get("businessName", merchant.get("name", "")),
-                    "businessType": merchant.get("businessType", "cafe"),
-                    "businessLicense": merchant.get("businessLicense", ""),
-                    "businessPhone": merchant.get("businessPhone", ""),
-                    "role": "business"
-                }
+                "userData": user_data,
+                "token": create_session_token(req_email, "business"),
+                "passwordSet": True,
             }
 
         return {"status": "new_user"}
@@ -695,37 +791,42 @@ def login_user(req: LoginRequest):
         return {"status": "new_user"}
 
 @app.post("/save_user")
-def save_user(user: UserInfo):
+def save_user(user: UserInfo, authorization: str = Header(None)):
     try:
         req_email = user.email.strip()
+        if not req_email:
+            return {"status": "error", "message": "กรุณาระบุอีเมล"}
         existing_user = users_collection.find_one({"email": req_email})
-        user_role = user.role or "tourist"
-        user_data = user.userData or {
-            "name": user.name.strip(),
-            "email": req_email,
-            "role": user_role
-        }
 
-        update_doc = {
+        if existing_user:
+            # แก้ไขข้อมูลบัญชีที่มีอยู่: ต้องเป็นเจ้าของบัญชีที่ล็อกอินอยู่เท่านั้น
+            # (เดิมใครก็ส่งอีเมลคนอื่นมาเขียนทับชื่อ/บทบาทได้ รวมถึงการ "สมัครซ้ำ" ด้วยอีเมลเดิม)
+            session = session_from_header(authorization)
+            if not session or session["email"] != req_email:
+                return {"status": "error", "code": "email_exists", "message": "อีเมลนี้ถูกลงทะเบียนแล้ว กรุณาเข้าสู่ระบบ"}
+            # Role and password are never changed through this endpoint.
+            update_doc = {"name": user.name.strip(), "preferences": user.preferences}
+            if user.userData:
+                update_doc["userData"] = {**user.userData, "role": existing_user.get("role", "tourist")}
+            users_collection.update_one({"email": req_email}, {"$set": update_doc})
+            return {"status": "success", "message": "อัปเดตข้อมูลผู้ใช้เรียบร้อย"}
+
+        # สมัครสมาชิกใหม่: ต้องตั้งรหัสผ่าน
+        if len(user.password or "") < MIN_PASSWORD_LENGTH:
+            return {"status": "error", "message": f"รหัสผ่านต้องมีความยาวอย่างน้อย {MIN_PASSWORD_LENGTH} ตัวอักษร"}
+        user_role = "business" if user.role == "business" else "tourist"
+        user_data = {**(user.userData or {}), "name": user.name.strip(), "email": req_email, "role": user_role}
+        users_collection.insert_one({
             "name": user.name.strip(),
             "email": req_email,
             "preferences": user.preferences,
             "role": user_role,
-            "userData": user_data
-        }
-
-        if existing_user:
-            # Password is only ever set at registration - never overwritten by a later
-            # profile/preferences update through this same endpoint.
-            users_collection.update_one({"email": req_email}, {"$set": update_doc})
-            return {"status": "success", "message": "อัปเดตข้อมูลผู้ใช้เรียบร้อย"}
-
-        update_doc["timestamp"] = datetime.now()
-        update_doc["status"] = "active"
-        if user.password:
-            update_doc["passwordHash"] = hash_password(user.password)
-        users_collection.insert_one(update_doc)
-        return {"status": "success"}
+            "userData": user_data,
+            "passwordHash": hash_password(user.password),
+            "timestamp": datetime.now(),
+            "status": "active",
+        })
+        return {"status": "success", "token": create_session_token(req_email, user_role)}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 

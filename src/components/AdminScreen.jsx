@@ -38,6 +38,32 @@ export default function AdminScreen({
   const [editingPlaceId, setEditingPlaceId] = useState(null);
   const [poiForm, setPoiForm] = useState(emptyPoiForm);
   const [isSavingPlace, setIsSavingPlace] = useState(false);
+  const [uploadingPoiField, setUploadingPoiField] = useState(null); // 'image' | 'vr_image' | null
+
+  // Uploads to the same GridFS-backed endpoint merchants use, then fills the URL field.
+  const handlePoiFileChange = async (field, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingPoiField(field);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await axios.post(`${API_BASE_URL}/merchant/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      if (response.data.status === 'success') {
+        const url = `${API_BASE_URL}${response.data.url}`;
+        setPoiForm((prev) => ({ ...prev, [field]: url }));
+      } else {
+        alert(response.data.message || 'อัปโหลดไฟล์ไม่สำเร็จ');
+      }
+    } catch (error) {
+      alert('อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setUploadingPoiField(null);
+      e.target.value = '';
+    }
+  };
 
   const loadPlaces = async () => {
     setIsLoadingPlaces(true);
@@ -703,6 +729,18 @@ export default function AdminScreen({
                       placeholder="https://..."
                       className="merchant-text-input"
                     />
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(e) => handlePoiFileChange('image', e)}
+                      disabled={uploadingPoiField !== null}
+                      className="merchant-text-input"
+                      style={{ marginTop: '6px' }}
+                    />
+                    {uploadingPoiField === 'image' && <p className="upload-status-hint">⏳ กำลังอัปโหลด...</p>}
+                    {poiForm.image && (
+                      <img src={poiForm.image} alt="ตัวอย่างรูปภาพ" className="image-preview-thumb" />
+                    )}
                   </div>
                   <div className="form-field-group">
                     <label className="form-input-label">URL ภาพ VR 360°</label>
@@ -713,6 +751,18 @@ export default function AdminScreen({
                       placeholder="/vr_images/... หรือ https://..."
                       className="merchant-text-input"
                     />
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(e) => handlePoiFileChange('vr_image', e)}
+                      disabled={uploadingPoiField !== null}
+                      className="merchant-text-input"
+                      style={{ marginTop: '6px' }}
+                    />
+                    {uploadingPoiField === 'vr_image' && <p className="upload-status-hint">⏳ กำลังอัปโหลด...</p>}
+                    {poiForm.vr_image && (
+                      <img src={poiForm.vr_image} alt="ตัวอย่างภาพ VR" className="image-preview-thumb" />
+                    )}
                   </div>
                 </div>
 

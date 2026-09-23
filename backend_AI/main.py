@@ -135,7 +135,7 @@ def load_places_db():
         except Exception as e:
             print(f"❌ เกิดข้อผิดพลาดในการอ่านไฟล์ {PLACES_FILE}: {e}")
             
-    ATTRACTIONS_DB = list(places_collection.find({}, {"_id": 0}))
+    ATTRACTIONS_DB = list(places_collection.find({"deleted": {"$ne": True}}, {"_id": 0}))
 
 load_places_db()
 
@@ -492,7 +492,7 @@ def admin_create_place(body: AdminPlaceUpsert, x_admin_key: str = Header(None)):
 @app.put("/admin/places/{place_id}")
 def admin_update_place(place_id: int, body: AdminPlaceUpsert, x_admin_key: str = Header(None)):
     verify_admin_key(x_admin_key)
-    result = places_collection.update_one({"id": place_id}, {"$set": body.dict()})
+    result = places_collection.update_one({"id": place_id, "deleted": {"$ne": True}}, {"$set": body.dict()})
     if result.matched_count == 0:
         return {"status": "error", "message": "ไม่พบสถานที่นี้"}
     load_places_db()
@@ -501,8 +501,13 @@ def admin_update_place(place_id: int, body: AdminPlaceUpsert, x_admin_key: str =
 @app.delete("/admin/places/{place_id}")
 def admin_delete_place(place_id: int, x_admin_key: str = Header(None)):
     verify_admin_key(x_admin_key)
-    result = places_collection.delete_one({"id": place_id})
-    if result.deleted_count == 0:
+    # Soft delete: keep the document with a `deleted` flag so the startup CSV seed-sync
+    # ($setOnInsert) sees it still exists and doesn't bring the place back after a restart.
+    result = places_collection.update_one(
+        {"id": place_id, "deleted": {"$ne": True}},
+        {"$set": {"deleted": True, "deletedAt": datetime.now().isoformat()}},
+    )
+    if result.matched_count == 0:
         return {"status": "error", "message": "ไม่พบสถานที่นี้"}
     load_places_db()
     return {"status": "success"}

@@ -57,7 +57,8 @@ export default function AiResultScreen({
       return acc;
     }, {})
   ).map(([tag, places]) => {
-    const sorted = [...places].sort((a, b) => (a.distance_km || 9999) - (b.distance_km || 9999)).slice(0, 6);
+    // show every place the AI put in the plan (it already fits the time/budget) - no cap per category
+    const sorted = [...places].sort((a, b) => (a.distance_km ?? 9999) - (b.distance_km ?? 9999));
     return [tag, sorted];
   });
 

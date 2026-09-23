@@ -22,11 +22,17 @@ export default function AiInputScreen({
   theme,
   toggleTheme,
 }) {
+  const budgetNumber = parseFloat(budget);
+  const timeNumber = parseFloat(timeHours);
+  const budgetError = budget !== '' && !(budgetNumber >= 0) ? 'งบประมาณต้องเป็นตัวเลขที่ไม่ติดลบ' : '';
+  const timeError = timeHours !== '' && !(timeNumber > 0) ? 'เวลาต้องมากกว่า 0' : '';
   const isFormValid =
     selectedPrefs.length > 0 &&
     tripMoods.length > 0 &&
-    budget &&
-    timeHours &&
+    budget !== '' &&
+    timeHours !== '' &&
+    !budgetError &&
+    !timeError &&
     !isLoading;
 
   return (
@@ -193,8 +199,10 @@ export default function AiInputScreen({
                 value={budget}
                 onChange={(e) => setBudget(e.target.value)}
                 className="merchant-text-input"
+                min="0"
                 required
               />
+              {budgetError && <p className="ai-field-error">{budgetError}</p>}
             </div>
 
             <div className="form-field-group">
@@ -206,6 +214,8 @@ export default function AiInputScreen({
                   value={timeHours}
                   onChange={(e) => setTimeHours(e.target.value)}
                   className="merchant-text-input"
+                  min="0"
+                  step="any"
                   required
                 />
                 <select
@@ -218,6 +228,7 @@ export default function AiInputScreen({
                   <option value="weeks">สัปดาห์</option>
                 </select>
               </div>
+              {timeError && <p className="ai-field-error">{timeError}</p>}
             </div>
           </div>
 

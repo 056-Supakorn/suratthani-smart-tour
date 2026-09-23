@@ -216,6 +216,8 @@ DEFAULT_VISIT_DURATION_HOURS = 1.5  # เวลาโดยประมาณท
 AVG_TRAVEL_SPEED_KMH = 40.0  # ความเร็วเฉลี่ยโดยประมาณสำหรับประเมินเวลาเดินทางระหว่างจุด
 # ถ้าสถานที่ที่ใกล้ที่สุดยังไกลเกินนี้ ถือว่าผู้ใช้อยู่นอกจังหวัด (จังหวัดกว้างราว 150-200 กม.)
 FAR_FROM_PROVINCE_KM = 150.0
+# สัดส่วนเวลาทริปที่ยอมให้ใช้เดินทางไปยังสถานที่ที่ AI แนะนำ (กำหนดรัศมีที่ใช้คะแนน AI จัดลำดับ)
+PREFERRED_TRAVEL_SHARE = 0.25
 
 def parse_price_to_number(price_str) -> float:
     """แปลงข้อความราคา (เช่น '50 บาท/คน', 'ฟรี', '') ให้เป็นตัวเลขบาทโดยประมาณ"""
@@ -830,110 +832,161 @@ def save_user(user: UserInfo, authorization: str = Header(None)):
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+VALID_MOODS = {"chill", "adventure", "culture", "social"}
+
+def validate_trip_request(req: TripRequest):
+    """คืน (categories, moods, gps, error_message) - error_message เป็น None ถ้าข้อมูลถูกต้อง"""
+    categories = list(dict.fromkeys(c.strip() for c in req.categories if isinstance(c, str) and c.strip()))
+    if not categories:
+        return None, None, None, "กรุณาเลือกหมวดหมู่สถานที่อย่างน้อย 1 หมวด"
+    unknown = [c for c in categories if c not in CATEGORY_MAP]
+    if unknown:
+        return None, None, None, f"ไม่รู้จักหมวดหมู่: {', '.join(unknown)}"
+
+    moods = list(dict.fromkeys(m.strip() for m in req.trip_mood.split(',') if m.strip()))
+    if not moods:
+        return None, None, None, "กรุณาเลือกอารมณ์ทริปอย่างน้อย 1 แบบ"
+    unknown = [m for m in moods if m not in VALID_MOODS]
+    if unknown:
+        return None, None, None, f"ไม่รู้จักอารมณ์ทริป: {', '.join(unknown)}"
+
+    if not math.isfinite(req.time_hours) or req.time_hours <= 0:
+        return None, None, None, "เวลาที่มีสำหรับทริปต้องมากกว่า 0"
+    if not math.isfinite(req.budget) or req.budget < 0:
+        return None, None, None, "งบประมาณต้องไม่ติดลบ"
+
+    gps = None
+    if req.user_lat is not None and req.user_lng is not None:
+        if not (-90 <= req.user_lat <= 90 and -180 <= req.user_lng <= 180):
+            return None, None, None, "พิกัด GPS ไม่ถูกต้อง"
+        gps = (req.user_lat, req.user_lng)
+    return categories, moods, gps, None
+
+def ai_place_scores(categories, moods, budget, time_hours) -> dict:
+    """คะแนนความเหมาะสมของแต่ละสถานที่จากโมเดล AI (รวมความน่าจะเป็นทุกคู่ หมวด x อารมณ์)
+    เฉพาะสถานที่ที่อยู่ในหมวดที่ขอจริง - อารมณ์ที่เลือกจึงเปลี่ยนลำดับสถานที่ที่แนะนำได้จริง"""
+    scores = {}
+    if not is_ai_ready:
+        return scores
+    class_names = le_place.inverse_transform(ai_model.classes_)
+    for cat in categories:
+        for mood in moods:
+            try:
+                mood_encoded = le_mood.transform([mood])[0]
+                cat_encoded = le_category.transform([cat])[0]
+            except ValueError:
+                continue  # อารมณ์/หมวดนี้ไม่มีในข้อมูลฝึก
+            proba = ai_model.predict_proba([[budget, time_hours, mood_encoded, cat_encoded]])[0]
+            for class_idx, p in enumerate(proba):
+                if p <= 0:
+                    continue
+                name = class_names[class_idx]
+                if place_category_map.get(name) == cat:
+                    scores[name] = scores.get(name, 0.0) + float(p)
+    return scores
+
+def plan_route_hours(places, gps, far_from_province):
+    """เรียงเส้นทางแบบใกล้สุดก่อน (nearest neighbour) แล้วคืน (ลำดับสถานที่, เวลารวมทั้งทริป)"""
+    if not gps:
+        return list(places), DEFAULT_VISIT_DURATION_HOURS * len(places)
+    remaining = list(places)
+    ordered, hours = [], 0.0
+    cur_lat, cur_lng = gps
+    while remaining:
+        nxt = min(remaining, key=lambda p: calculate_distance(cur_lat, cur_lng, float(p['lat']), float(p['lng'])))
+        leg_km = calculate_distance(cur_lat, cur_lng, float(nxt['lat']), float(nxt['lng']))
+        # อยู่นอกจังหวัด: ไม่นับเวลาเดินทางขาแรกที่มาถึงสุราษฎร์ฯ
+        if not (not ordered and far_from_province):
+            hours += leg_km / AVG_TRAVEL_SPEED_KMH
+        hours += DEFAULT_VISIT_DURATION_HOURS
+        ordered.append(nxt)
+        cur_lat, cur_lng = float(nxt['lat']), float(nxt['lng'])
+        remaining.remove(nxt)
+    return ordered, hours
+
 @app.post("/recommend")
 def recommend_trip(req: TripRequest):
     try:
-        recommended_names = set()
-        if is_ai_ready:
-            moods = [m.strip() for m in req.trip_mood.split(',')]
-            for cat in req.categories:
-                for mood in moods:
-                    try:
-                        mood_encoded = le_mood.transform([mood])[0]
-                        cat_encoded = le_category.transform([cat])[0]
-                        # predict_proba + rank instead of .predict(): the model can rank a place from
-                        # the wrong category first when training data is sparse, so walk the ranked
-                        # candidates and take the first one that actually belongs to the requested
-                        # category, instead of trusting the single top-1 class blindly.
-                        proba = ai_model.predict_proba([[req.budget, req.time_hours, mood_encoded, cat_encoded]])[0]
-                        ranked_class_indices = proba.argsort()[::-1]
-                        for class_idx in ranked_class_indices:
-                            if proba[class_idx] <= 0:
-                                break
-                            place_result = le_place.inverse_transform([ai_model.classes_[class_idx]])[0]
-                            if place_category_map.get(place_result) == cat:
-                                recommended_names.add(place_result)
-                                break
-                    except ValueError:
-                        continue
+        categories, moods, gps, error = validate_trip_request(req)
+        if error:
+            return {"status": "error", "message": error}
 
+        # 1. ผู้สมัคร: สถานที่ในระบบ + ร้านค้าที่แอดมินอนุมัติแล้ว เฉพาะหมวดที่เลือก
         load_places_db()
-        places_data = []
-        
-        # 1. ค้นหาจากฐานข้อมูลตามหมวดหมู่ (Tag) ที่เลือกทั้งหมด
-        keywords = [CATEGORY_MAP.get(c, c) for c in req.categories]
-        tag_places = []
-        for p in ATTRACTIONS_DB:
-            if any(k in str(p.get('tag', '')) for k in keywords):
-                tag_places.append(p)
-        
-        random.shuffle(tag_places) 
-        
-        # 2. นำสถานที่ที่ตรง Tag ใส่เข้าไปในรายชื่อ (แสดงผลทั้งหมด ไม่ตัดทิ้งแล้ว)
-        for p in tag_places:
-            if not any(existing_p['name'] == p['name'] for existing_p in places_data):
-                places_data.append(p)
-                
-        # 3. นำผลลัพธ์จาก AI มาต่อท้าย
-        ai_places = [p for p in ATTRACTIONS_DB if p['name'] in recommended_names]
-        for p in ai_places:
-            if not any(existing_p['name'] == p['name'] for existing_p in places_data):
-                places_data.append(p)
+        approved_merchant_places = list(merchant_places_collection.find({"status": "approved"}, {"_id": 0}))
+        by_category = {c: [] for c in categories}
+        seen_names = set()
+        for p in ATTRACTIONS_DB + approved_merchant_places:
+            if p.get('name') in seen_names or p.get('lat') in (None, '') or p.get('lng') in (None, ''):
+                continue
+            for c in categories:
+                if CATEGORY_MAP[c] in str(p.get('tag', '')):
+                    by_category[c].append(dict(p))
+                    seen_names.add(p['name'])
+                    break
 
-        # 4. กรณีฉุกเฉินจริงๆ ถ้าหาไม่เจอเลย ค่อยสุ่มมาให้ 4 ที่
-        if len(places_data) == 0:
-            places_data = random.sample(ATTRACTIONS_DB, min(4, len(ATTRACTIONS_DB)))
+        candidates = [p for places in by_category.values() for p in places]
+        if not candidates:
+            return {"status": "error", "message": "ยังไม่มีสถานที่ในหมวดหมู่ที่เลือก"}
 
-        # 5. เรียงลำดับผู้สมัครทั้งหมดตาม GPS จากใกล้ไปไกล (ถ้ามีพิกัด) พร้อมประเมินเวลาเดินทางแต่ละช่วง
-        ordered_candidates = []
         far_from_province = False
-        if req.user_lat and req.user_lng:
-            # distance_km = ระยะจากตัวผู้ใช้ตรงไปยังสถานที่นั้นเสมอ (ไม่ใช่ระยะจากจุดก่อนหน้า)
-            for p in places_data:
-                p['distance_km'] = round(calculate_distance(req.user_lat, req.user_lng, float(p['lat']), float(p['lng'])), 1)
+        if gps:
+            for p in candidates:
+                p['distance_km'] = round(calculate_distance(gps[0], gps[1], float(p['lat']), float(p['lng'])), 1)
+            far_from_province = min(p['distance_km'] for p in candidates) > FAR_FROM_PROVINCE_KM
 
-            # ผู้ใช้อยู่นอกจังหวัด (เช่น กรุงเทพฯ): ไม่นับเวลาเดินทางมาถึงสุราษฎร์ฯ ในเวลาทริป
-            # ไม่งั้นแค่ขาแรกก็กินเวลาเกินทุกทริป และระบบจะหาสถานที่ให้ไม่ได้เลย
-            far_from_province = min(p['distance_km'] for p in places_data) > FAR_FROM_PROVINCE_KM
+        # 2. จัดลำดับความสำคัญ: คะแนน AI ตามอารมณ์ทริปมาก่อน
+        #    มี GPS: ใช้คะแนน AI เฉพาะที่อยู่ในรัศมีที่ไปถึงได้สมเหตุสมผล (ใช้เวลาเดินทางไม่เกิน 1/4 ของเวลาทริป
+        #    นับจากจุดเริ่ม = ตัวผู้ใช้ หรือสถานที่แรกที่ถึงในสุราษฎร์ฯ ถ้าอยู่นอกจังหวัด) ที่ไกลกว่านั้นต่อท้ายเรียงใกล้->ไกล
+        #    ไม่งั้นที่ที่ AI ชอบแต่ไกลมาก (เช่น บนเกาะ) จะกินเวลาทริปจนได้สถานที่น้อยลง
+        scores = ai_place_scores(categories, moods, req.budget, req.time_hours)
+        if gps:
+            start = min(candidates, key=lambda p: p['distance_km']) if far_from_province else None
+            start_lat, start_lng = (float(start['lat']), float(start['lng'])) if start else gps
+            radius_km = req.time_hours * PREFERRED_TRAVEL_SHARE * AVG_TRAVEL_SPEED_KMH
+            for p in candidates:
+                p['_from_start_km'] = calculate_distance(start_lat, start_lng, float(p['lat']), float(p['lng']))
+        for places in by_category.values():
+            random.shuffle(places)
+            if gps:
+                places.sort(key=lambda p: (
+                    p['_from_start_km'] > radius_km,
+                    -scores.get(p['name'], 0.0) if p['_from_start_km'] <= radius_km else p['_from_start_km'],
+                    p['_from_start_km'],
+                ))
+            else:
+                places.sort(key=lambda p: -scores.get(p['name'], 0.0))
 
-            remaining = places_data.copy()
-            current_lat, current_lng = req.user_lat, req.user_lng
-            is_first_leg = True
-            while remaining:
-                nearest_place = min(remaining, key=lambda p: calculate_distance(current_lat, current_lng, float(p['lat']), float(p['lng'])))
-                leg_dist = calculate_distance(current_lat, current_lng, float(nearest_place['lat']), float(nearest_place['lng']))
-                count_leg = not (is_first_leg and far_from_province)
-                nearest_place['_leg_travel_hours'] = leg_dist / AVG_TRAVEL_SPEED_KMH if count_leg else 0.0
-                ordered_candidates.append(nearest_place)
-                current_lat, current_lng = float(nearest_place['lat']), float(nearest_place['lng'])
-                remaining.remove(nearest_place)
-                is_first_leg = False
-        else:
-            for p in places_data:
-                p['_leg_travel_hours'] = 0.0
-            ordered_candidates = places_data
+        # 3. สลับหยิบทีละหมวด (round-robin) เพื่อให้ทุกหมวดที่เลือกได้ที่ก่อน
+        priority = []
+        queues = [list(places) for places in by_category.values()]
+        while any(queues):
+            for q in queues:
+                if q:
+                    priority.append(q.pop(0))
 
-        # 6. คัดเลือกแบบ greedy ให้รวมค่าใช้จ่ายและเวลาไม่เกินงบ/เวลาที่ระบุจริง
-        route_plan = []
-        total_cost = 0.0
-        total_time = 0.0
-        for p in ordered_candidates:
-            leg_hours = p.pop('_leg_travel_hours', 0.0)
+        # 4. เพิ่มทีละที่ตามลำดับความสำคัญ ถ้ารวมแล้วยังไม่เกินงบและเวลา (คิดเวลาเดินทางจากเส้นทางจริง)
+        chosen, total_cost = [], 0.0
+        for p in priority:
             price = parse_price_to_number(p.get('price', ''))
-            stop_time = leg_hours + DEFAULT_VISIT_DURATION_HOURS
-            if (total_cost + price) <= req.budget and (total_time + stop_time) <= req.time_hours:
-                route_plan.append(p)
+            if total_cost + price > req.budget:
+                continue
+            _, hours = plan_route_hours(chosen + [p], gps, far_from_province)
+            if hours <= req.time_hours:
+                chosen.append(p)
                 total_cost += price
-                total_time += stop_time
 
         budget_warning = None
-        if len(route_plan) == 0 and ordered_candidates:
-            # งบ/เวลาน้อยเกินกว่าจะไปที่ไหนได้เลย เลือกตัวเลือกที่ประหยัดที่สุดให้แทนอย่างน้อย 1 ที่
-            cheapest = min(ordered_candidates, key=lambda p: parse_price_to_number(p.get('price', '')))
-            route_plan = [cheapest]
+        if not chosen:
+            # งบ/เวลาน้อยเกินกว่าจะไปที่ไหนได้เลย: เลือกที่ประหยัดที่สุด (เสมอกันเอาลำดับความสำคัญสูงสุด)
+            cheapest = min(priority, key=lambda p: parse_price_to_number(p.get('price', '')))
+            chosen = [cheapest]
             total_cost = parse_price_to_number(cheapest.get('price', ''))
-            total_time = DEFAULT_VISIT_DURATION_HOURS
             budget_warning = "งบประมาณหรือเวลาที่ระบุอาจไม่พอสำหรับสถานที่ที่แนะนำ ระบบเลือกตัวเลือกที่ประหยัดที่สุดให้แทนอย่างน้อย 1 แห่ง"
+
+        route_plan, total_time = plan_route_hours(chosen, gps, far_from_province)
+        for p in route_plan:
+            p.pop('_from_start_km', None)
 
         return {
             "status": "success",

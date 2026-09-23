@@ -68,18 +68,11 @@ export default function FinalRouteScreen({
           {finalRoutePlan.map((place, index) => (
             <div
               key={place.id || index}
-              className="surat-attraction-card"
-              style={{
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'stretch',
-                padding: 0,
-                cursor: 'pointer',
-              }}
+              className="surat-attraction-card final-route-card"
               onClick={() => onViewDetail(place, 'final-route')}
             >
-              {/* Photo Side */}
-              <div style={{ width: '32%', minWidth: '180px', position: 'relative', overflow: 'hidden' }}>
+              {/* Photo Side (stacks on top on phones - see .final-route-card in Login.css) */}
+              <div className="final-route-photo">
                 <img
                   src={place.image || 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&w=800&q=80'}
                   alt={place.name}
@@ -104,9 +97,9 @@ export default function FinalRouteScreen({
               </div>
 
               {/* Info Side */}
-              <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div className="final-route-info">
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                     <span className="card-category-tag" style={{ color: '#059669', fontSize: '12px' }}>{place.tag || 'สถานที่ท่องเที่ยว'}</span>
                     <span style={{ fontSize: '12px', color: '#64748b' }}>เวลาแนะนำ: {place.travelTime || '1-2 ชม.'}</span>
                   </div>
@@ -122,6 +115,8 @@ export default function FinalRouteScreen({
                       borderRadius: '12px',
                       padding: '10px 14px',
                       display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '4px 12px',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       marginBottom: '12px',
@@ -131,7 +126,7 @@ export default function FinalRouteScreen({
                       🚗 {index === 0 ? 'ห่างจากตำแหน่งของคุณ' : 'ห่างจากจุดก่อนหน้า'}: {round(place.route_distance, 1)} กม.
                     </span>
                     <span style={{ fontWeight: 600, fontSize: '13px' }} className="brand-title">
-                      ⏱️ ประมาณ {calculateEstimatedTime(place.route_distance)}
+                      ⏱️ {calculateEstimatedTime(place.route_distance)}
                     </span>
                   </div>
                 )}

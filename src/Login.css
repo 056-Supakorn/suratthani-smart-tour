@@ -3155,6 +3155,51 @@
 }
 
 /* =========================================================
+   POINT-TO-POINT ROUTE CARDS (FinalRouteScreen)
+   ========================================================= */
+
+.final-route-card {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  padding: 0;
+  cursor: pointer;
+}
+
+.final-route-photo {
+  width: 32%;
+  min-width: 180px;
+  position: relative;
+  overflow: hidden;
+}
+
+.final-route-info {
+  flex: 1;
+  min-width: 0; /* let long Thai names wrap instead of pushing the card wider */
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Phones: photo on top, details full width underneath */
+@media (max-width: 640px) {
+  .final-route-card {
+    flex-direction: column;
+  }
+
+  .final-route-photo {
+    width: 100%;
+    min-width: 0;
+    height: 170px;
+  }
+
+  .final-route-info {
+    padding: 16px;
+  }
+}
+
+/* =========================================================
    VR BUTTONS & FULLSCREEN VR 360° VIEWER
    ========================================================= */
 

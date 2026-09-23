@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from './apiConfig';
+import { useSessionState, readSessionState, clearSessionState } from './sessionState';
 import './App.css';
 import './Login.css';
 import LoginScreen from './components/LoginScreen';
@@ -33,53 +34,78 @@ const moodOptions = [
   { id: 'social', label: '📸 สายคาเฟ่ / ถ่ายรูป' }
 ];
 
+// หน้าที่ต้องเข้าสู่ระบบก่อน และหน้าที่ต้องมีข้อมูลประกอบ (ใช้ตรวจตอนกู้คืนหน้าหลังรีเฟรช)
+const LOGGED_OUT_SCREENS = ['login', 'register'];
+const TOURIST_SCREENS = ['onboarding', 'home', 'search-results', 'ai-input', 'ai-result', 'final-route', 'detail'];
+
+// เลือกหน้าที่จะแสดงตอนเปิด/รีเฟรช: ใช้หน้าที่บันทึกไว้ถ้ายังใช้ได้ ไม่งั้นใช้หน้าเริ่มต้นตามบทบาท
+function resolveInitialScreen() {
+  const user = localStorage.getItem('userName');
+  const pref = localStorage.getItem('userPref');
+  const role = localStorage.getItem('userRole');
+
+  const defaultScreen = !user
+    ? 'login'
+    : role === 'business'
+    ? 'merchant-add-poi'
+    : role === 'admin'
+    ? 'admin'
+    : (!pref ? 'onboarding' : 'home');
+
+  const saved = readSessionState('currentScreen', null);
+  if (!saved) return defaultScreen;
+  if (!user) return LOGGED_OUT_SCREENS.includes(saved) ? saved : 'login';
+
+  const hasData = {
+    'detail': !!readSessionState('selectedAttraction', null),
+    'ai-result': readSessionState('aiRoute', []).length > 0,
+    'final-route': readSessionState('finalRoutePlan', []).length > 0,
+  };
+  const allowed =
+    (saved === 'admin' && role === 'admin') ||
+    (saved === 'merchant-add-poi' && role === 'business') ||
+    (TOURIST_SCREENS.includes(saved) && hasData[saved] !== false);
+  return allowed ? saved : defaultScreen;
+}
+
 function App() {
-  const initialUser = localStorage.getItem('userName');
   const initialPref = localStorage.getItem('userPref');
-  const initialRole = localStorage.getItem('userRole');
-  
-  const [currentScreen, setCurrentScreen] = useState(
-    !initialUser
-      ? 'login'
-      : initialRole === 'business'
-      ? 'merchant-add-poi'
-      : initialRole === 'admin'
-      ? 'admin'
-      : (!initialPref ? 'onboarding' : 'home')
-  );
-  const [previousScreen, setPreviousScreen] = useState('home');
 
-  const [inputName, setInputName] = useState('');
-  const [inputEmail, setInputEmail] = useState('');
+  const [currentScreen, setCurrentScreen] = useSessionState('currentScreen', resolveInitialScreen);
+  const [previousScreen, setPreviousScreen] = useSessionState('previousScreen', 'home');
+
+  const [inputName, setInputName] = useSessionState('inputName', '');
+  const [inputEmail, setInputEmail] = useSessionState('inputEmail', '');
   const [inputPassword, setInputPassword] = useState('');
-  const [onboardingPrefs, setOnboardingPrefs] = useState([]);
-  const [selectedPrefs, setSelectedPrefs] = useState([]);
-  
-  const [tripMoods, setTripMoods] = useState([]); 
-  
-  const [budget, setBudget] = useState('');
-  const [timeHours, setTimeHours] = useState('');
-  const [timeUnit, setTimeUnit] = useState('hours'); // 'hours' | 'days' | 'weeks'
+  const [onboardingPrefs, setOnboardingPrefs] = useSessionState('onboardingPrefs', []);
+  const [selectedPrefs, setSelectedPrefs] = useSessionState('selectedPrefs', []);
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const [tripMoods, setTripMoods] = useSessionState('tripMoods', []);
 
-  const [userLat, setUserLat] = useState(null);
-  const [userLng, setUserLng] = useState(null);
-  const [gpsStatus, setGpsStatus] = useState('');
+  const [budget, setBudget] = useSessionState('budget', '');
+  const [timeHours, setTimeHours] = useSessionState('timeHours', '');
+  const [timeUnit, setTimeUnit] = useSessionState('timeUnit', 'hours'); // 'hours' | 'days' | 'weeks'
 
-  const [aiRoute, setAiRoute] = useState([]);
-  const [estimatedCost, setEstimatedCost] = useState(0);
-  const [estimatedTimeHours, setEstimatedTimeHours] = useState(0);
-  const [budgetWarning, setBudgetWarning] = useState(null);
+  const [searchQuery, setSearchQuery] = useSessionState('searchQuery', '');
+
+  const [userLat, setUserLat] = useSessionState('userLat', null);
+  const [userLng, setUserLng] = useSessionState('userLng', null);
+  const [gpsStatus, setGpsStatus] = useSessionState('gpsStatus', '');
+
+  const [aiRoute, setAiRoute] = useSessionState('aiRoute', []);
+  const [estimatedCost, setEstimatedCost] = useSessionState('estimatedCost', 0);
+  const [estimatedTimeHours, setEstimatedTimeHours] = useSessionState('estimatedTimeHours', 0);
+  const [budgetWarning, setBudgetWarning] = useSessionState('budgetWarning', null);
+  const [farFromProvince, setFarFromProvince] = useSessionState('farFromProvince', false);
   // 🌟 State ใหม่สำหรับเก็บสถานที่ที่ผู้ใช้เลือกเข้าทริป
-  const [selectedTripPlaces, setSelectedTripPlaces] = useState([]);
-  const [finalRoutePlan, setFinalRoutePlan] = useState([]);
+  const [selectedTripPlaces, setSelectedTripPlaces] = useSessionState('selectedTripPlaces', []);
+  const [finalRoutePlan, setFinalRoutePlan] = useSessionState('finalRoutePlan', []);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [lastPref, setLastPref] = useState(initialPref);
-  const [selectedAttraction, setSelectedAttraction] = useState(null);
-  const [theme, setTheme] = useState('light');
+  const [selectedAttraction, setSelectedAttraction] = useSessionState('selectedAttraction', null);
+  const [theme, setTheme] = useSessionState('theme', 'light');
   const [homePlaces, setHomePlaces] = useState([]);
   
   const [vrMode, setVrMode] = useState(false);
@@ -102,8 +128,13 @@ function App() {
     }
   }, [vrMode, currentVrPlace]);
 
+  // search-results / ai-result ก็ใช้ homePlaces ด้วย จึงต้องโหลดให้ถ้าผู้ใช้รีเฟรชอยู่ที่หน้านั้น
+  const needsHomePlaces =
+    currentScreen === 'home' ||
+    ((currentScreen === 'search-results' || currentScreen === 'ai-result') && homePlaces.length === 0);
+
   useEffect(() => {
-    if (currentScreen === 'home') {
+    if (needsHomePlaces) {
       const fetchHomePlaces = async () => {
         try {
           const response = await axios.get(`${API_BASE_URL}/get_home_places?pref=${lastPref || ''}`);
@@ -116,7 +147,7 @@ function App() {
       };
       fetchHomePlaces();
     }
-  }, [currentScreen, lastPref]);
+  }, [currentScreen, lastPref, needsHomePlaces]);
 
   const getLocation = () => {
     if (!navigator.geolocation) {
@@ -225,7 +256,9 @@ function App() {
   const handleLogout = () => {
     localStorage.clear();
     sessionStorage.removeItem('adminKey');
-    setInputName(''); setInputEmail(''); setOnboardingPrefs([]); setCurrentScreen('login');
+    // ล้างหน้า/ข้อมูลทริปที่บันทึกไว้ แล้วโหลดใหม่ เพื่อไม่ให้ข้อมูลของผู้ใช้คนก่อนค้างอยู่ในแท็บนี้
+    clearSessionState();
+    window.location.reload();
   };
 
   const toggleOnboardingSelection = (id) => setOnboardingPrefs(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -277,6 +310,7 @@ function App() {
         setEstimatedCost(response.data.estimated_cost || 0);
         setEstimatedTimeHours(response.data.estimated_time_hours || 0);
         setBudgetWarning(response.data.budget_warning || null);
+        setFarFromProvince(!!response.data.far_from_province);
         localStorage.setItem('userPref', selectedPrefs[0]);
         setLastPref(selectedPrefs[0]);
         setCurrentScreen('ai-result');
@@ -373,7 +407,18 @@ function App() {
     return mins > 0 ? `ประมาณ ${hours} ชม. ${mins} นาที` : `ประมาณ ${hours} ชั่วโมง`;
   };
 
-  const filteredPlaces = homePlaces.filter(place => {
+  // ระยะทางจริงจากตำแหน่ง GPS ของผู้ใช้ (มีเฉพาะเมื่อผู้ใช้กดดึงพิกัดแล้ว ไม่งั้นไม่แสดงตัวเลข)
+  const homePlacesWithDistance = homePlaces.map((place) => {
+    const lat = parseFloat(place.lat);
+    const lng = parseFloat(place.lng);
+    if (userLat == null || userLng == null || Number.isNaN(lat) || Number.isNaN(lng)) {
+      const { distance_km: _ignored, ...rest } = place;
+      return rest;
+    }
+    return { ...place, distance_km: Math.round(calculateDistance(userLat, userLng, lat, lng) * 10) / 10 };
+  });
+
+  const filteredPlaces = homePlacesWithDistance.filter(place => {
     if (!searchQuery) return true;
     const lowerQuery = searchQuery.toLowerCase();
     return (
@@ -514,7 +559,7 @@ function App() {
           userName={localStorage.getItem('userName')}
           userRole={localStorage.getItem('userRole')}
           lastPref={lastPref}
-          homePlaces={homePlaces}
+          homePlaces={homePlacesWithDistance}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           onSearch={() => {
@@ -584,7 +629,7 @@ function App() {
       {currentScreen === 'ai-result' && (
         <AiResultScreen
           aiRoute={aiRoute}
-          homePlaces={homePlaces}
+          homePlaces={homePlacesWithDistance}
           selectedTripPlaces={selectedTripPlaces}
           togglePlaceSelection={togglePlaceSelection}
           generateFinalRoute={generateFinalRoute}
@@ -594,6 +639,7 @@ function App() {
           estimatedCost={estimatedCost}
           estimatedTimeHours={estimatedTimeHours}
           budgetWarning={budgetWarning}
+          farFromProvince={farFromProvince}
           onViewDetail={handleViewDetail}
           onResetSearch={() => setCurrentScreen('ai-input')}
           onBackToHome={() => setCurrentScreen('home')}

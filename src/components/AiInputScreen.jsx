@@ -184,7 +184,7 @@ export default function AiInputScreen({
           </div>
 
           {/* Section 4: Budget and Time */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '28px', textAlign: 'left' }}>
+          <div className="ai-budget-time-grid">
             <div className="form-field-group">
               <label className="form-input-label">💰 งบประมาณต่อคน (บาท) *</label>
               <input
@@ -199,21 +199,19 @@ export default function AiInputScreen({
 
             <div className="form-field-group">
               <label className="form-input-label">⏱️ เวลาที่มีสำหรับทริปนี้ *</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div className="ai-time-input-row">
                 <input
                   type="number"
                   placeholder="เช่น 6"
                   value={timeHours}
                   onChange={(e) => setTimeHours(e.target.value)}
                   className="merchant-text-input"
-                  style={{ flex: 1 }}
                   required
                 />
                 <select
                   value={timeUnit}
                   onChange={(e) => setTimeUnit(e.target.value)}
                   className="merchant-select-input"
-                  style={{ width: '110px' }}
                 >
                   <option value="hours">ชั่วโมง</option>
                   <option value="days">วัน</option>

@@ -348,6 +348,12 @@ def verify_password(password: str, stored_hash: str) -> bool:
 # 🌐 API Endpoints
 # ==========================================
 
+# Lightweight keep-alive target for uptime monitors (they may ping with HEAD),
+# so the free Render instance doesn't spin down between visits.
+@app.api_route("/health", methods=["GET", "HEAD"])
+def health():
+    return {"status": "ok"}
+
 @app.get("/get_home_places")
 def get_home_places(pref: str = None):
     load_places_db()

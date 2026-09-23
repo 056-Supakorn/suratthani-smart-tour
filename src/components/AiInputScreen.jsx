@@ -88,7 +88,7 @@ export default function AiInputScreen({
 
           {/* Section 1: Categories Selector */}
           <div style={{ textAlign: 'left', marginBottom: '24px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 10px 0', color: '#123e2f' }} className="brand-title">
+            <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 10px 0' }} className="brand-title">
               1. สไตล์สถานที่ท่องเที่ยวที่คุณสนใจ (เลือกได้หลายข้อ) *
             </h3>
             <div className="pref-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
@@ -122,7 +122,7 @@ export default function AiInputScreen({
 
           {/* Section 2: Trip Moods */}
           <div style={{ textAlign: 'left', marginBottom: '24px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 10px 0', color: '#123e2f' }} className="brand-title">
+            <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 10px 0' }} className="brand-title">
               2. บรรยากาศและฟีลลิ่งของทริปนี้ (Trip Moods) *
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
@@ -160,7 +160,7 @@ export default function AiInputScreen({
           <div style={{ textAlign: 'left', marginBottom: '24px', padding: '18px 20px', borderRadius: '18px', background: theme === 'dark' ? '#131922' : '#f0fdf4', border: `1.5px dashed ${theme === 'dark' ? '#2d6a4f' : '#86efac'}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               <div>
-                <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 700, color: '#166534' }} className="brand-title">
+                <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 700, color: theme === 'dark' ? '#4ade80' : '#166534' }}>
                   📍 คำนวณระยะทางจากจุดที่คุณอยู่ (Point-to-Point)
                 </h4>
                 <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b' }}>

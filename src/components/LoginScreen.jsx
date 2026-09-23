@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
 
 export default function LoginScreen({
-  inputName,
-  setInputName,
   inputEmail,
   setInputEmail,
+  inputPassword,
+  setInputPassword,
   isLoggingIn,
   handleLogin,
   theme,
   toggleTheme,
   onGoToRegister,
-  onDemoLogin,
 }) {
   const [rememberMe, setRememberMe] = useState(true);
 
@@ -120,33 +119,6 @@ export default function LoginScreen({
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="login-form-element">
-            {/* Input Name */}
-            <div className="login-form-group">
-              <label className="login-field-label">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="login-label-icon">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-                <span>ชื่อของคุณ</span>
-              </label>
-              <div className="login-input-box-wrapper">
-                <input
-                  type="text"
-                  placeholder="เช่น สมชาย, นักท่องเที่ยว"
-                  value={inputName}
-                  onChange={(e) => setInputName(e.target.value)}
-                  className="login-text-input"
-                  required
-                />
-                <span className="login-field-suffix-icon">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                  </svg>
-                </span>
-              </div>
-            </div>
-
             {/* Input Email */}
             <div className="login-form-group">
               <label className="login-field-label">
@@ -171,6 +143,26 @@ export default function LoginScreen({
                     <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
                   </svg>
                 </span>
+              </div>
+            </div>
+
+            {/* Input Password */}
+            <div className="login-form-group">
+              <label className="login-field-label">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="login-label-icon">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <span>รหัสผ่าน</span>
+              </label>
+              <div className="login-input-box-wrapper">
+                <input
+                  type="password"
+                  placeholder="รหัสผ่านของคุณ"
+                  value={inputPassword}
+                  onChange={(e) => setInputPassword(e.target.value)}
+                  className="login-text-input"
+                />
               </div>
             </div>
 
@@ -200,7 +192,7 @@ export default function LoginScreen({
             <button
               type="submit"
               className="login-primary-submit-btn"
-              disabled={!inputName.trim() || !inputEmail.trim() || isLoggingIn}
+              disabled={!inputEmail.trim() || isLoggingIn}
             >
               <span>{isLoggingIn ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}</span>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="login-send-icon">
@@ -230,72 +222,6 @@ export default function LoginScreen({
             <span>ข้อมูลของคุณปลอดภัยและถูกเก็บเป็นความลับ</span>
           </div>
 
-          {onDemoLogin && (
-            <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <p style={{ fontSize: '11.5px', color: '#94a3b8', margin: '0 0 10px 0' }}>
-                หรือทดลองใช้งานทันทีด้วยบัญชีตัวอย่าง
-              </p>
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={() => onDemoLogin('tourist')}
-                  disabled={isLoggingIn}
-                  className="login-demo-btn"
-                  style={{
-                    background: '#eef2f5',
-                    color: '#334155',
-                    border: '1px solid #dfe6ec',
-                    borderRadius: '20px',
-                    padding: '8px 14px',
-                    fontSize: '12.5px',
-                    fontFamily: 'Prompt, sans-serif',
-                    fontWeight: 600,
-                    cursor: isLoggingIn ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  🎒 Demo นักท่องเที่ยว
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onDemoLogin('business')}
-                  disabled={isLoggingIn}
-                  className="login-demo-btn"
-                  style={{
-                    background: '#fff7ed',
-                    color: '#9a3412',
-                    border: '1px solid #fed7aa',
-                    borderRadius: '20px',
-                    padding: '8px 14px',
-                    fontSize: '12.5px',
-                    fontFamily: 'Prompt, sans-serif',
-                    fontWeight: 600,
-                    cursor: isLoggingIn ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  🏪 Demo ผู้ประกอบการ
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onDemoLogin('admin')}
-                  disabled={isLoggingIn}
-                  className="login-demo-btn"
-                  style={{
-                    background: '#f0fdf4',
-                    color: '#166534',
-                    border: '1px solid #bbf7d0',
-                    borderRadius: '20px',
-                    padding: '8px 14px',
-                    fontSize: '12.5px',
-                    fontFamily: 'Prompt, sans-serif',
-                    fontWeight: 600,
-                    cursor: isLoggingIn ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  🛡️ Demo ผู้ดูแลระบบ
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* ================= RIGHT PANEL: INTERACTIVE PHOTO & MAP ================= */}

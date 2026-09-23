@@ -9,6 +9,9 @@ export default function DetailScreen({
   onBack,
   theme,
   toggleTheme,
+  tripBudget,
+  tripTimeHours,
+  tripMoods,
 }) {
   const [userRating, setUserRating] = useState(0);
   const [feedbackSent, setFeedbackSent] = useState(false);
@@ -20,10 +23,15 @@ export default function DetailScreen({
     setFeedbackSent(true);
     setRatingSum((prev) => prev + star);
     setRatingCount((prev) => prev + 1);
-    axios.post(`${API_BASE_URL}/track/rating`, {
-      place_id: selectedAttraction.id,
-      rating: star,
-    }).catch(() => {});
+    const payload = { place_id: selectedAttraction.id, rating: star };
+    // ถ้าผู้ใช้มาจากทริปที่ AI วางแผนให้ (มีงบ/เวลา/อารมณ์ทริปจริง) แนบไปด้วย
+    // เพื่อให้คะแนนดีๆ ป้อนกลับเข้าไปเทรนโมเดลใหม่จากพฤติกรรมจริง
+    if (tripBudget && tripTimeHours && tripMoods && tripMoods.length > 0) {
+      payload.budget = tripBudget;
+      payload.time_hours = tripTimeHours;
+      payload.trip_mood = tripMoods.join(', ');
+    }
+    axios.post(`${API_BASE_URL}/track/rating`, payload).catch(() => {});
   };
 
   if (!selectedAttraction) return null;
@@ -107,7 +115,7 @@ export default function DetailScreen({
 
             {/* Description */}
             <div style={{ marginBottom: '28px' }}>
-              <h3 style={{ fontSize: '17px', fontWeight: 700, margin: '0 0 8px 0', color: '#123e2f' }} className="brand-title">
+              <h3 style={{ fontSize: '17px', fontWeight: 700, margin: '0 0 8px 0' }} className="brand-title">
                 ℹ️ ไฮไลท์และรายละเอียดสถานที่
               </h3>
               <p style={{ fontSize: '15px', lineHeight: '1.75', color: theme === 'dark' ? '#cbd5e1' : '#475569', margin: 0 }}>
@@ -117,7 +125,7 @@ export default function DetailScreen({
 
             {/* Google Maps Embed */}
             <div style={{ marginBottom: '28px' }}>
-              <h3 style={{ fontSize: '17px', fontWeight: 700, margin: '0 0 12px 0', color: '#123e2f' }} className="brand-title">
+              <h3 style={{ fontSize: '17px', fontWeight: 700, margin: '0 0 12px 0' }} className="brand-title">
                 🗺️ แผนที่และการเดินทาง
               </h3>
               <div style={{ borderRadius: '18px', overflow: 'hidden', border: `1.5px solid ${theme === 'dark' ? '#2e3846' : '#e2e8f0'}` }}>
@@ -175,7 +183,7 @@ export default function DetailScreen({
                 textAlign: 'center',
               }}
             >
-              <h3 style={{ margin: '0 0 6px 0', fontSize: '16.5px', fontWeight: 700, color: '#123e2f' }} className="brand-title">
+              <h3 style={{ margin: '0 0 6px 0', fontSize: '16.5px', fontWeight: 700 }} className="brand-title">
                 ⭐ ให้คะแนนความพึงพอใจสถานที่นี้ (Submit Feedback)
               </h3>
               <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#64748b' }}>

@@ -51,6 +51,7 @@ function App() {
 
   const [inputName, setInputName] = useState('');
   const [inputEmail, setInputEmail] = useState('');
+  const [inputPassword, setInputPassword] = useState('');
   const [onboardingPrefs, setOnboardingPrefs] = useState([]);
   const [selectedPrefs, setSelectedPrefs] = useState([]);
   
@@ -135,21 +136,20 @@ function App() {
     );
   };
 
-  const handleLogin = async (overrideName, overrideEmail) => {
-    const nameToUse = (overrideName ?? inputName).trim();
+  const handleLogin = async (overrideEmail) => {
     const emailToUse = (overrideEmail ?? inputEmail).trim();
-    if (!nameToUse || !emailToUse) {
-      alert('กรุณากรอกชื่อ และอีเมลให้ครบถ้วนครับ');
+    if (!emailToUse) {
+      alert('กรุณากรอกอีเมลให้ครบถ้วนครับ');
       return;
     }
     setIsLoggingIn(true);
     try {
       const storedRole = localStorage.getItem('userRole');
 
-      const response = await axios.post(`${API_BASE_URL}/login_user`, { name: nameToUse, email: emailToUse });
+      const response = await axios.post(`${API_BASE_URL}/login_user`, { email: emailToUse, password: inputPassword });
 
       if (response.data.status === 'admin') {
-        localStorage.setItem('userName', nameToUse);
+        localStorage.setItem('userName', response.data.name || 'ผู้ดูแลระบบ');
         localStorage.setItem('userEmail', emailToUse);
         localStorage.setItem('userRole', 'admin');
         sessionStorage.setItem('adminKey', response.data.adminKey || '');
@@ -158,8 +158,14 @@ function App() {
         return;
       }
 
-      if (response.data.status === 'name_mismatch') {
-        alert(response.data.message);
+      if (response.data.status === 'invalid_password') {
+        alert(response.data.message || 'รหัสผ่านไม่ถูกต้อง');
+        setIsLoggingIn(false);
+        return;
+      }
+
+      if (response.data.status === 'suspended') {
+        alert(response.data.message || 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ');
         setIsLoggingIn(false);
         return;
       }
@@ -171,21 +177,27 @@ function App() {
         return;
       }
 
-      localStorage.setItem('userName', nameToUse);
       localStorage.setItem('userEmail', emailToUse);
 
-      if (storedRole === 'business') {
+      if (response.data.status === 'returning_user') {
+        const role = response.data.role || storedRole || 'tourist';
+        localStorage.setItem('userName', response.data.userData?.name || emailToUse);
+        localStorage.setItem('userRole', role);
+        if (response.data.userData) {
+          localStorage.setItem('userData', JSON.stringify(response.data.userData));
+        }
+        localStorage.setItem('userPref', response.data.pref || '');
+        setLastPref(response.data.pref || '');
+
+        setCurrentScreen(role === 'business' ? 'merchant-add-poi' : 'home');
+      } else if (storedRole === 'business') {
         setCurrentScreen('merchant-add-poi');
-      } else if (response.data.status === 'returning_user') {
-        localStorage.setItem('userPref', response.data.pref);
-        setLastPref(response.data.pref);
-        setCurrentScreen('home');
       }
     } catch (error) {
       // Fallback for offline / demo mode
       const storedRole = localStorage.getItem('userRole');
 
-      localStorage.setItem('userName', nameToUse);
+      localStorage.setItem('userName', localStorage.getItem('userName') || emailToUse);
       localStorage.setItem('userEmail', emailToUse);
 
       if (storedRole === 'business') {
@@ -196,25 +208,6 @@ function App() {
     } finally {
       setIsLoggingIn(false);
     }
-  };
-
-  const DEMO_ACCOUNTS = {
-    tourist: { name: 'นักท่องเที่ยว (Demo)', email: 'demo.tourist@suratsmarttour.local' },
-    business: { name: 'ผู้ประกอบการ (Demo)', email: 'demo.business@suratsmarttour.local' },
-    admin: { name: 'ผู้ดูแลระบบ', email: 'admin@surat.go.th' },
-  };
-
-  const handleDemoLogin = (role) => {
-    const account = DEMO_ACCOUNTS[role];
-    if (!account) return;
-    if (role === 'business') {
-      localStorage.setItem('userRole', 'business');
-    } else if (role === 'tourist') {
-      localStorage.removeItem('userRole');
-    }
-    setInputName(account.name);
-    setInputEmail(account.email);
-    handleLogin(account.name, account.email);
   };
 
   const handleRegisterTouristSuccess = (userData) => {
@@ -400,16 +393,15 @@ function App() {
     <div className={`app-main ${theme}-theme`}>
       {currentScreen === 'login' && (
         <LoginScreen
-          inputName={inputName}
-          setInputName={setInputName}
           inputEmail={inputEmail}
           setInputEmail={setInputEmail}
+          inputPassword={inputPassword}
+          setInputPassword={setInputPassword}
           isLoggingIn={isLoggingIn}
           handleLogin={handleLogin}
           theme={theme}
           toggleTheme={toggleTheme}
           onGoToRegister={() => setCurrentScreen('register')}
-          onDemoLogin={handleDemoLogin}
         />
       )}
 
@@ -623,15 +615,23 @@ function App() {
         />
       )}
 
-      {currentScreen === 'detail' && selectedAttraction && (
-        <DetailScreen
-          selectedAttraction={selectedAttraction}
-          onOpenVR={openVRMode}
-          onBack={() => setCurrentScreen(previousScreen || 'home')}
-          theme={theme}
-          toggleTheme={toggleTheme}
-        />
-      )}
+      {currentScreen === 'detail' && selectedAttraction && (() => {
+        // ป้อนกลับข้อมูล budget/time/mood ให้เทรน AI เฉพาะตอนที่มาจากผลลัพธ์ทริปที่ AI วางแผนให้จริง
+        // (ai-result / final-route) เท่านั้น ไม่ใช่ทุกครั้งที่เคยรันทริปในเซสชันนี้
+        const isFromAiTrip = previousScreen === 'ai-result' || previousScreen === 'final-route';
+        return (
+          <DetailScreen
+            selectedAttraction={selectedAttraction}
+            onOpenVR={openVRMode}
+            onBack={() => setCurrentScreen(previousScreen || 'home')}
+            theme={theme}
+            toggleTheme={toggleTheme}
+            tripBudget={isFromAiTrip && budget ? parseFloat(budget) : null}
+            tripTimeHours={isFromAiTrip && timeHours ? parseFloat(timeHours) * (TIME_UNIT_TO_HOURS[timeUnit] || 1) : null}
+            tripMoods={isFromAiTrip ? tripMoods : null}
+          />
+        );
+      })()}
 
       {vrMode && currentVrPlace && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: '#000', zIndex: 9999, display: 'flex', flexDirection: 'column' }}>

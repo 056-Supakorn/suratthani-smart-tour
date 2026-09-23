@@ -125,6 +125,23 @@ export default function AdminScreen({
     }
   };
 
+  const handleDeletePlace = async (place) => {
+    if (!window.confirm(`ต้องการลบ "${place.name}" ใช่หรือไม่? การลบไม่สามารถย้อนกลับได้`)) return;
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/admin/places/${place.id}`, {
+        headers: getAdminHeaders(),
+      });
+      if (response.data.status === 'success') {
+        if (editingPlaceId === place.id) cancelPlaceForm();
+        await loadPlaces();
+      } else {
+        alert(response.data.message || 'ลบไม่สำเร็จ');
+      }
+    } catch (error) {
+      alert('ไม่สามารถลบสถานที่นี้ได้ กรุณาลองใหม่อีกครั้ง');
+    }
+  };
+
   useEffect(() => {
     loadPlaces();
   }, []);
@@ -174,6 +191,23 @@ export default function AdminScreen({
       }
     } catch (error) {
       alert('ไม่สามารถอัปเดตสถานะได้ กรุณาลองใหม่อีกครั้ง');
+    }
+  };
+
+  const handleDeleteMerchantPlace = async (merchant) => {
+    if (!window.confirm(`ต้องการลบร้านค้า "${merchant.businessName || merchant.name}" ใช่หรือไม่? การลบไม่สามารถย้อนกลับได้`)) return;
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/admin/merchant_places/${merchant.id}`, {
+        headers: getAdminHeaders(),
+      });
+      if (response.data.status === 'success') {
+        setMerchants((prev) => prev.filter((m) => m.id !== merchant.id));
+        loadPlaces();
+      } else {
+        alert(response.data.message || 'ลบไม่สำเร็จ');
+      }
+    } catch (error) {
+      alert('ไม่สามารถลบร้านค้านี้ได้ กรุณาลองใหม่อีกครั้ง');
     }
   };
 
@@ -232,6 +266,22 @@ export default function AdminScreen({
       }
     } catch (error) {
       alert('ไม่สามารถอัปเดตสถานะผู้ใช้งานได้ กรุณาลองใหม่');
+    }
+  };
+
+  const [isRetraining, setIsRetraining] = useState(false);
+
+  const handleRetrainAi = async () => {
+    setIsRetraining(true);
+    try {
+      const response = await axios.post(`${API_BASE_URL}/admin/retrain`, {}, {
+        headers: getAdminHeaders(),
+      });
+      alert(response.data.message || (response.data.status === 'success' ? 'เทรนโมเดลเรียบร้อยแล้ว' : 'เทรนโมเดลไม่สำเร็จ'));
+    } catch (error) {
+      alert('ไม่สามารถเทรนโมเดล AI ใหม่ได้ กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setIsRetraining(false);
     }
   };
 
@@ -485,6 +535,14 @@ export default function AdminScreen({
                               🔄 สลับสถานะ
                             </button>
                           )}
+                          <button
+                            type="button"
+                            className="btn-reject-action"
+                            onClick={() => handleDeleteMerchantPlace(merchant)}
+                            title="ลบร้านค้านี้ออกจากระบบถาวร"
+                          >
+                            🗑️ ลบ
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -706,6 +764,16 @@ export default function AdminScreen({
                           ✏️ แก้ไข
                         </button>
                       )}
+                      <button
+                        type="button"
+                        className="btn-reject-action"
+                        onClick={() =>
+                          place.ownerEmail ? handleDeleteMerchantPlace(place) : handleDeletePlace(place)
+                        }
+                        title="ลบสถานที่นี้ออกจากระบบถาวร"
+                      >
+                        🗑️ ลบ
+                      </button>
                     </div>
                     {expandedPlaceId === place.id && (
                       <div className="my-place-card-details" style={{ marginTop: '12px' }}>
@@ -749,7 +817,14 @@ export default function AdminScreen({
                     <div key={place.id} className="place-item-card">
                       <span className="place-num">{String(index + 1).padStart(2, '0')}</span>
                       <div style={{ flex: 1 }}>
-                        <h4 className="place-item-title">{place.name}</h4>
+                        <h4 className="place-item-title">
+                          {place.name}{' '}
+                          {place.ownerEmail && (
+                            <span className="business-type-tag" style={{ fontSize: '11px', marginLeft: '6px' }}>
+                              🏪 จากร้านค้า
+                            </span>
+                          )}
+                        </h4>
                         <p className="place-item-sub">{place.location || '-'} • หมวดหมู่: {place.tag || '-'}</p>
                       </div>
                       <span className="place-status-active">👁️ {place.vrViews || 0} ครั้ง</span>
@@ -850,8 +925,15 @@ export default function AdminScreen({
 
           return (
             <section className="admin-table-card fade-in">
-              <h2 className="table-title">📊 รายงานสถิติภาพรวมตามหมวดหมู่สถานที่</h2>
-              <p className="table-desc">จำนวนครั้งจริงที่นักท่องเที่ยวเพิ่มสถานที่แต่ละหมวดหมู่ลงในทริป (สร้างเส้นทางสำเร็จ)</p>
+              <div className="table-header-row">
+                <div>
+                  <h2 className="table-title">📊 รายงานสถิติภาพรวมตามหมวดหมู่สถานที่</h2>
+                  <p className="table-desc">จำนวนครั้งจริงที่นักท่องเที่ยวเพิ่มสถานที่แต่ละหมวดหมู่ลงในทริป (สร้างเส้นทางสำเร็จ)</p>
+                </div>
+                <button type="button" className="btn-recheck-action" onClick={handleRetrainAi} disabled={isRetraining}>
+                  {isRetraining ? '⏳ กำลังเทรน...' : '🤖 เทรนโมเดล AI ใหม่'}
+                </button>
+              </div>
 
               {sortedCategories.length === 0 ? (
                 <p style={{ fontSize: '13px', color: '#64748b' }}>ยังไม่มีข้อมูลการใช้งาน</p>

@@ -130,7 +130,7 @@ export default function FinalRouteScreen({
                     <span style={{ color: '#059669', fontWeight: 700, fontSize: '13px' }}>
                       🚗 ห่างจากจุดก่อนหน้า: {round(place.route_distance, 1)} กม.
                     </span>
-                    <span style={{ color: '#123e2f', fontWeight: 600, fontSize: '13px' }} className="brand-title">
+                    <span style={{ fontWeight: 600, fontSize: '13px' }} className="brand-title">
                       ⏱️ ประมาณ {calculateEstimatedTime(place.route_distance)}
                     </span>
                   </div>

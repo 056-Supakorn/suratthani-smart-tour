@@ -51,6 +51,12 @@ export default function MerchantAddPoiScreen({
   const [isLoadingMyPlaces, setIsLoadingMyPlaces] = useState(true);
   const [expandedPlaceId, setExpandedPlaceId] = useState(null);
 
+  const [vrAssetPlaceId, setVrAssetPlaceId] = useState('');
+  const [vrAssetImageUrl, setVrAssetImageUrl] = useState('');
+  const [vrAssetMode, setVrAssetMode] = useState('upload'); // 'upload' | 'url'
+  const [isUploadingVrAsset, setIsUploadingVrAsset] = useState(false);
+  const [isSavingVrAsset, setIsSavingVrAsset] = useState(false);
+
   const latestSubmission = myPlaces[0] || null;
   const myStatus = editingPlaceId ? 'pending' : (latestSubmission ? latestSubmission.status : 'none');
   const myRejectReason = latestSubmission ? latestSubmission.rejectReason || '' : '';
@@ -76,6 +82,14 @@ export default function MerchantAddPoiScreen({
     fetchMyPlaces();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (myPlaces.length > 0 && !vrAssetPlaceId) {
+      setVrAssetPlaceId(myPlaces[0].id);
+      setVrAssetImageUrl(myPlaces[0].vr_image || '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myPlaces]);
 
   const uploadFile = async (file) => {
     const formData = new FormData();
@@ -112,6 +126,56 @@ export default function MerchantAddPoiScreen({
       alert(err.message || 'อัปโหลดไฟล์ VR ไม่สำเร็จ กรุณาลองใหม่');
     } finally {
       setIsUploadingVr(false);
+    }
+  };
+
+  const handleVrAssetFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setIsUploadingVrAsset(true);
+    try {
+      setVrAssetImageUrl(await uploadFile(file));
+    } catch (err) {
+      alert(err.message || 'อัปโหลดไฟล์ VR ไม่สำเร็จ กรุณาลองใหม่');
+    } finally {
+      setIsUploadingVrAsset(false);
+    }
+  };
+
+  const handleSaveVrAsset = async () => {
+    const place = myPlaces.find((p) => p.id === vrAssetPlaceId);
+    if (!place) return;
+    setIsSavingVrAsset(true);
+    try {
+      const payload = {
+        ownerEmail,
+        ownerName,
+        businessName: place.businessName || place.name || '',
+        businessType: place.businessType || businessTypeInitial,
+        businessLicense: place.businessLicense || '',
+        businessPhone: place.businessPhone || '',
+        name: place.name || '',
+        tag: place.tag || '',
+        location: place.location || '',
+        travelTime: place.travelTime || '',
+        price: place.price || '',
+        description: place.description || '',
+        lat: parseFloat(place.lat) || 0,
+        lng: parseFloat(place.lng) || 0,
+        image: place.image || '',
+        vr_image: vrAssetImageUrl.trim(),
+      };
+      const response = await axios.put(`${API_BASE_URL}/merchant/places/${place.id}`, payload);
+      if (response.data.status === 'success') {
+        alert('บันทึกภาพ VR 360° เรียบร้อยแล้ว ระบบจะส่งสถานที่นี้ให้ผู้ดูแลระบบตรวจสอบอีกครั้ง');
+        await fetchMyPlaces();
+      } else {
+        alert(response.data.message || 'บันทึกไม่สำเร็จ');
+      }
+    } catch (err) {
+      alert('ไม่สามารถบันทึกภาพ VR ได้ กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setIsSavingVrAsset(false);
     }
   };
 
@@ -726,26 +790,100 @@ export default function MerchantAddPoiScreen({
         {/* ================= TAB 3: VR ASSETS UPLOAD ================= */}
         {activeTab === 'vr-assets' && (
           <div className="merchant-card-form fade-in">
-            <h2 className="form-section-title">🕶️ อัปโหลดสื่อและภาพเสมือนจริง VR 360°</h2>
+            <h2 className="form-section-title">🕶️ จัดการสื่อและภาพเสมือนจริง VR 360°</h2>
             <p className="form-section-desc">
-              อัปโหลดภาพพาโนรามาแบบ Equirectangular อัตราส่วน 2:1 เพื่อสร้างประสบการณ์เสมือนจริง 360 องศาให้นักท่องเที่ยว
+              เลือกสถานที่ของคุณแล้วอัปโหลดภาพพาโนรามาแบบ Equirectangular อัตราส่วน 2:1 เพื่อสร้างประสบการณ์เสมือนจริง 360 องศาให้นักท่องเที่ยว
             </p>
 
-            <div className="vr-upload-dropzone">
-              <span style={{ fontSize: '48px' }}>📸</span>
-              <h4 style={{ margin: '10px 0 4px 0', fontSize: '16px' }}>ลากไฟล์ภาพ 360° มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์</h4>
-              <p style={{ margin: 0, fontSize: '12.5px', color: '#64748b' }}>
-                รองรับไฟล์ JPG, PNG ความละเอียดขั้นต่ำ 4096 x 2048 พิกเซล
+            {isLoadingMyPlaces ? (
+              <p className="upload-status-hint">กำลังโหลดข้อมูล...</p>
+            ) : myPlaces.length === 0 ? (
+              <p className="upload-status-hint">
+                คุณยังไม่มีสถานที่ในระบบ กรุณาเพิ่มสถานที่ที่แท็บ "จัดการข้อมูลสถานที่" ก่อนครับ
               </p>
-              <button
-                type="button"
-                className="admin-tab-btn active"
-                style={{ marginTop: '16px' }}
-                onClick={() => alert('เลือกไฟล์ภาพ 360° จากอุปกรณ์ของคุณ')}
-              >
-                📁 เลือกไฟล์จากคอมพิวเตอร์
-              </button>
-            </div>
+            ) : (
+              <>
+                <div className="form-field-group" style={{ marginTop: '12px' }}>
+                  <label className="form-input-label">เลือกสถานที่ที่ต้องการแก้ไขภาพ VR</label>
+                  <select
+                    value={vrAssetPlaceId}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      setVrAssetPlaceId(id);
+                      const place = myPlaces.find((p) => p.id === id);
+                      setVrAssetImageUrl(place?.vr_image || '');
+                    }}
+                    className="merchant-select-input"
+                  >
+                    {myPlaces.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-field-group" style={{ marginTop: '16px' }}>
+                  <label className="form-input-label">ไฟล์ภาพเสมือนจริง VR 360°</label>
+                  <div className="mode-toggle-row">
+                    <button
+                      type="button"
+                      className={`mode-toggle-btn ${vrAssetMode === 'upload' ? 'active' : ''}`}
+                      onClick={() => setVrAssetMode('upload')}
+                    >
+                      📁 อัปโหลดจากเครื่อง
+                    </button>
+                    <button
+                      type="button"
+                      className={`mode-toggle-btn ${vrAssetMode === 'url' ? 'active' : ''}`}
+                      onClick={() => setVrAssetMode('url')}
+                    >
+                      🔗 ใส่ URL
+                    </button>
+                  </div>
+                  {vrAssetMode === 'upload' ? (
+                    <input
+                      key="vr-asset-upload-input"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleVrAssetFileChange}
+                      disabled={isUploadingVrAsset}
+                      className="merchant-text-input"
+                    />
+                  ) : (
+                    <input
+                      key="vr-asset-url-input"
+                      type="url"
+                      value={vrAssetImageUrl}
+                      onChange={(e) => setVrAssetImageUrl(e.target.value)}
+                      placeholder="https://..."
+                      className="merchant-text-input"
+                    />
+                  )}
+                  {isUploadingVrAsset && <p className="upload-status-hint">⏳ กำลังอัปโหลด...</p>}
+                  {vrAssetImageUrl && (
+                    <img
+                      src={vrAssetImageUrl}
+                      alt="ตัวอย่างภาพ VR"
+                      className="image-preview-thumb"
+                      style={{ marginTop: '12px' }}
+                    />
+                  )}
+                </div>
+
+                <div className="form-action-footer" style={{ marginTop: '20px', gap: '10px' }}>
+                  <button
+                    type="button"
+                    className="merchant-save-btn"
+                    onClick={handleSaveVrAsset}
+                    disabled={isSavingVrAsset || isUploadingVrAsset}
+                  >
+                    {isSavingVrAsset ? 'กำลังบันทึก...' : '💾 บันทึกภาพ VR'}
+                  </button>
+                </div>
+                <p className="upload-status-hint" style={{ marginTop: '10px' }}>
+                  การแก้ไขภาพ VR จะส่งสถานที่นี้กลับไปให้ผู้ดูแลระบบตรวจสอบใหม่อีกครั้งก่อนแสดงผล
+                </p>
+              </>
+            )}
           </div>
         )}
       </main>

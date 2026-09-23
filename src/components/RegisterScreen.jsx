@@ -112,6 +112,9 @@ export default function RegisterScreen({
           name: fullName.trim(),
           email: email.trim(),
           preferences: role === 'tourist' ? `age:${age},gender:${gender}` : `business:${businessType}`,
+          role: role,
+          userData: userData,
+          password: password,
         });
       } catch (err) {
         // Fallback gracefully if backend is offline

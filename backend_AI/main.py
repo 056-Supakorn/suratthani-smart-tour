@@ -9,29 +9,43 @@ if hasattr(sys.stdout, "reconfigure"):
 
 from fastapi import FastAPI, Header, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Optional
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
+import hashlib
+import hmac
 import os
 import random
 import re
-import shutil
+import secrets
 import uuid
 from datetime import datetime
 import warnings
 import math
 from pymongo import MongoClient
+import gridfs
 
 warnings.filterwarnings('ignore')
 
+# Load .env before reading any config below (CORS_ORIGINS, MONGO_URI, ...).
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 app = FastAPI()
+
+# Comma-separated list of allowed origins. Defaults to the local Vite dev server only -
+# set CORS_ORIGINS in .env for production (e.g. "https://your-domain.com").
+CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -39,20 +53,16 @@ app.add_middleware(
 # ==========================================
 # 🖼️ ไฟล์ที่ผู้ประกอบการอัปโหลด (รูปภาพ / VR 360°)
 # ==========================================
+# Files are stored in MongoDB GridFS (not local disk) so they survive restarts on
+# hosts with ephemeral filesystems such as Render. UPLOAD_DIR is only read once at
+# startup to migrate files uploaded before the switch.
 UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 ALLOWED_UPLOAD_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+UPLOAD_CONTENT_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
 
 # ==========================================
-# 📊 1. ส่วนเชื่อมต่อ MongoDB 
+# 📊 1. ส่วนเชื่อมต่อ MongoDB
 # ==========================================
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass
-
 MONGO_URI = os.getenv("MONGO_URI")
 if not MONGO_URI:
     raise RuntimeError(
@@ -71,9 +81,19 @@ try:
     places_collection = db["places"]
     dataset_collection = db["ai_dataset"]
     merchant_places_collection = db["merchant_places"]
+    uploads_fs = gridfs.GridFS(db, collection="uploads")
     print("✅ [DB READY] เชื่อมต่อ MongoDB สำเร็จ!")
 except Exception as e:
     print(f"❌ [DB ERROR] เชื่อมต่อ MongoDB ล้มเหลว: {e}")
+
+# One-time migration: copy any files left in the old local uploads/ folder into GridFS.
+if os.path.isdir(UPLOAD_DIR):
+    for _name in os.listdir(UPLOAD_DIR):
+        _ext = os.path.splitext(_name)[1].lower()
+        if _ext in UPLOAD_CONTENT_TYPES and not uploads_fs.exists({"filename": _name}):
+            with open(os.path.join(UPLOAD_DIR, _name), "rb") as _f:
+                uploads_fs.put(_f, filename=_name, contentType=UPLOAD_CONTENT_TYPES[_ext])
+            print(f"📦 ย้ายไฟล์ {_name} เข้า MongoDB แล้ว")
 
 # ==========================================
 # 🗄️ 2. ระบบฐานข้อมูลสถานที่ (Full Database with Upsert)
@@ -120,6 +140,7 @@ def load_places_db():
 load_places_db()
 
 CATEGORY_MAP = {"sea": "ทะเล", "mountain": "ธรรมชาติ", "temple": "วัด", "local": "ชุมชน", "cafe": "คาเฟ่", "food": "ร้านอาหาร"}
+REVERSE_CATEGORY_MAP = {v: k for k, v in CATEGORY_MAP.items()}
 
 # ==========================================
 # 🧠 3. ระบบ AI Machine Learning
@@ -128,10 +149,15 @@ DATASET_FILE = 'dataset.csv'
 ai_model = RandomForestClassifier(n_estimators=100, random_state=42)
 le_mood, le_category, le_place = LabelEncoder(), LabelEncoder(), LabelEncoder()
 is_ai_ready = False
+# place_name -> category, built fresh each train_ai() run. Lets /recommend restrict a
+# prediction's candidate classes to only places that actually belong to the requested
+# category, instead of trusting whatever place the classifier ranks highest overall
+# (which can be from an unrelated category when the training data is sparse).
+place_category_map = {}
 
 def train_ai():
-    global is_ai_ready
-    
+    global is_ai_ready, place_category_map
+
     if dataset_collection.count_documents({}) == 0 and os.path.exists(DATASET_FILE):
         print("🔄 กำลังย้ายข้อมูล Dataset AI เข้า MongoDB...")
         try:
@@ -147,12 +173,13 @@ def train_ai():
             df = pd.DataFrame(data_from_db)
             X = df[['budget', 'time_hours', 'trip_mood', 'category']].copy()
             y = df['place_name']
-            
+
             X['trip_mood'] = le_mood.fit_transform(X['trip_mood'])
             X['category'] = le_category.fit_transform(X['category'])
             y_encoded = le_place.fit_transform(y)
-            
+
             ai_model.fit(X, y_encoded)
+            place_category_map = dict(zip(df['place_name'], df['category']))
             is_ai_ready = True
             print("✅ [AI READY] โมเดลเรียนรู้จาก MongoDB พร้อมใช้งาน!")
         except Exception as e:
@@ -197,10 +224,13 @@ class UserInfo(BaseModel):
     name: str
     email: str
     preferences: str
+    role: Optional[str] = "tourist"
+    userData: Optional[dict] = None
+    password: Optional[str] = None
 
 class LoginRequest(BaseModel):
-    name: str
     email: str
+    password: Optional[str] = None
 
 class MerchantPlaceSubmission(BaseModel):
     ownerEmail: str
@@ -260,6 +290,12 @@ class VrViewTrack(BaseModel):
 class RatingTrack(BaseModel):
     place_id: str
     rating: int
+    # Optional trip context (budget/time/mood the tourist searched with) - when present
+    # and the rating is high, this feeds back into the AI training dataset so the
+    # recommender actually learns from real satisfaction, not just static dataset.csv.
+    budget: Optional[float] = None
+    time_hours: Optional[float] = None
+    trip_mood: Optional[str] = None
 
 class TripAddTrack(BaseModel):
     place_ids: list
@@ -279,9 +315,34 @@ def find_place_and_increment(place_id: str, inc_fields: dict) -> bool:
     result = merchant_places_collection.update_one({"id": place_id}, {"$inc": inc_fields})
     return result.matched_count > 0
 
+def find_place_doc(place_id: str):
+    """Looks up a place (curated or merchant) by id, trying the numeric id first."""
+    try:
+        doc = places_collection.find_one({"id": int(place_id)}, {"_id": 0})
+        if doc:
+            return doc
+    except (ValueError, TypeError):
+        pass
+    return merchant_places_collection.find_one({"id": place_id}, {"_id": 0})
+
 def verify_admin_key(x_admin_key: str = Header(None)):
     if not ADMIN_PASSWORD or x_admin_key != ADMIN_PASSWORD:
         raise HTTPException(status_code=401, detail="ไม่ได้รับอนุญาต (Unauthorized)")
+
+PBKDF2_ITERATIONS = 200_000
+
+def hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt), PBKDF2_ITERATIONS)
+    return f"{salt}${digest.hex()}"
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    try:
+        salt, digest_hex = stored_hash.split("$", 1)
+    except ValueError:
+        return False
+    expected = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt), PBKDF2_ITERATIONS)
+    return hmac.compare_digest(expected.hex(), digest_hex)
 
 # ==========================================
 # 🌐 API Endpoints
@@ -362,10 +423,19 @@ async def upload_merchant_file(file: UploadFile = File(...)):
     if ext not in ALLOWED_UPLOAD_EXTENSIONS:
         return {"status": "error", "message": "รองรับเฉพาะไฟล์ภาพ JPG, PNG, WEBP เท่านั้น"}
     filename = f"{uuid.uuid4().hex}{ext}"
-    file_path = os.path.join(UPLOAD_DIR, filename)
-    with open(file_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+    uploads_fs.put(file.file, filename=filename, contentType=UPLOAD_CONTENT_TYPES[ext])
     return {"status": "success", "url": f"/uploads/{filename}"}
+
+@app.get("/uploads/{filename}")
+def get_uploaded_file(filename: str):
+    grid_out = uploads_fs.find_one({"filename": filename})
+    if grid_out is None:
+        raise HTTPException(status_code=404, detail="File not found")
+    return Response(
+        content=grid_out.read(),
+        media_type=grid_out.content_type or "application/octet-stream",
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
 
 @app.get("/admin/merchant_places")
 def admin_list_merchant_places(x_admin_key: str = Header(None)):
@@ -384,6 +454,14 @@ def admin_update_merchant_place_status(place_id: str, body: MerchantPlaceStatusU
     }
     result = merchant_places_collection.update_one({"id": place_id}, {"$set": update_fields})
     if result.matched_count == 0:
+        return {"status": "error", "message": "ไม่พบรายการนี้"}
+    return {"status": "success"}
+
+@app.delete("/admin/merchant_places/{place_id}")
+def admin_delete_merchant_place(place_id: str, x_admin_key: str = Header(None)):
+    verify_admin_key(x_admin_key)
+    result = merchant_places_collection.delete_one({"id": place_id})
+    if result.deleted_count == 0:
         return {"status": "error", "message": "ไม่พบรายการนี้"}
     return {"status": "success"}
 
@@ -420,6 +498,15 @@ def admin_update_place(place_id: int, body: AdminPlaceUpsert, x_admin_key: str =
     load_places_db()
     return {"status": "success"}
 
+@app.delete("/admin/places/{place_id}")
+def admin_delete_place(place_id: int, x_admin_key: str = Header(None)):
+    verify_admin_key(x_admin_key)
+    result = places_collection.delete_one({"id": place_id})
+    if result.deleted_count == 0:
+        return {"status": "error", "message": "ไม่พบสถานที่นี้"}
+    load_places_db()
+    return {"status": "success"}
+
 # ==========================================
 # 📈 ระบบเก็บสถิติการใช้งานจริง (VR views / Trip adds / Ratings)
 # ==========================================
@@ -429,12 +516,38 @@ def track_vr_view(body: VrViewTrack):
     find_place_and_increment(body.place_id, {"vrViews": 1})
     return {"status": "success"}
 
+RATING_FEEDBACK_THRESHOLD = 4  # ratings at/above this actually get learned by the AI model
+
 @app.post("/track/rating")
 def track_rating(body: RatingTrack):
     if body.rating < 1 or body.rating > 5:
         return {"status": "error", "message": "คะแนนต้องอยู่ระหว่าง 1-5"}
     find_place_and_increment(body.place_id, {"ratingSum": body.rating, "ratingCount": 1})
-    return {"status": "success"}
+
+    # Feedback loop: a good rating given with real trip context (the budget/time/mood
+    # the tourist actually searched with) becomes a new training example, then the
+    # model is retrained immediately so future recommendations reflect real satisfaction.
+    learned = False
+    if (
+        body.rating >= RATING_FEEDBACK_THRESHOLD
+        and body.budget is not None
+        and body.time_hours is not None
+        and body.trip_mood
+    ):
+        place = find_place_doc(body.place_id)
+        category = REVERSE_CATEGORY_MAP.get(place.get("tag")) if place else None
+        if place and category:
+            dataset_collection.insert_one({
+                "budget": body.budget,
+                "time_hours": body.time_hours,
+                "category": category,
+                "trip_mood": body.trip_mood.split(',')[0].strip(),
+                "place_name": place["name"],
+            })
+            train_ai()
+            learned = True
+
+    return {"status": "success", "learned": learned}
 
 @app.post("/track/trip_add")
 def track_trip_add(body: TripAddTrack):
@@ -443,6 +556,27 @@ def track_trip_add(body: TripAddTrack):
     if body.owner_email:
         users_collection.update_one({"email": body.owner_email}, {"$inc": {"tripsCreated": 1}})
     return {"status": "success"}
+
+# ==========================================
+# 🤖 ระบบเทรนโมเดล AI ใหม่ (Admin: Retrain)
+# ==========================================
+
+@app.post("/admin/retrain")
+def admin_retrain_ai(x_admin_key: str = Header(None)):
+    verify_admin_key(x_admin_key)
+    train_ai()
+    dataset_rows = dataset_collection.count_documents({})
+    if is_ai_ready:
+        return {
+            "status": "success",
+            "message": f"เทรนโมเดล AI ใหม่เรียบร้อยแล้ว (ใช้ข้อมูล {dataset_rows} แถว)",
+            "datasetRows": dataset_rows,
+        }
+    return {
+        "status": "error",
+        "message": f"เทรนโมเดลไม่สำเร็จ ข้อมูล dataset มีแค่ {dataset_rows} แถว (ต้องมีอย่างน้อย 5 แถว)",
+        "datasetRows": dataset_rows,
+    }
 
 # ==========================================
 # 👥 ระบบจัดการผู้ใช้งาน (Admin: User Management)
@@ -471,20 +605,69 @@ def admin_update_user_status(email: str, body: UserStatusUpdate, x_admin_key: st
 
 @app.post("/login_user")
 def login_user(req: LoginRequest):
-    if (
-        ADMIN_NAME
-        and ADMIN_EMAIL
-        and req.name.strip().lower() == ADMIN_NAME.strip().lower()
-        and req.email.strip().lower() == ADMIN_EMAIL.strip().lower()
-    ):
-        return {"status": "admin", "adminKey": ADMIN_PASSWORD}
+    req_email = req.email.strip()
+
+    if ADMIN_EMAIL and req_email.lower() == ADMIN_EMAIL.strip().lower():
+        # Admin "password" is the same ADMIN_PASSWORD used as the admin API key -
+        # knowing the admin email alone (e.g. from .env.example) is no longer enough.
+        if not ADMIN_PASSWORD or req.password != ADMIN_PASSWORD:
+            return {"status": "invalid_password", "message": "รหัสผ่านไม่ถูกต้อง"}
+        return {"status": "admin", "adminKey": ADMIN_PASSWORD, "role": "admin", "name": ADMIN_NAME}
 
     try:
-        user = users_collection.find_one({"email": req.email.strip()})
+        user = users_collection.find_one({"email": req_email})
         if user:
-            if user.get("name") != req.name.strip():
-                return {"status": "name_mismatch", "message": f"อีเมลนี้ถูกลงทะเบียนไว้ด้วยชื่อ '{user.get('name')}' แล้ว"}
-            return {"status": "returning_user", "pref": user.get("preferences", "")}
+            if user.get("status") == "suspended":
+                return {"status": "suspended", "message": "บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ"}
+
+            # Accounts registered before password support has no passwordHash yet - only
+            # enforce the check once a hash actually exists, so old accounts still work.
+            stored_hash = user.get("passwordHash")
+            if stored_hash and not verify_password(req.password or "", stored_hash):
+                return {"status": "invalid_password", "message": "รหัสผ่านไม่ถูกต้อง"}
+
+            # Determine role
+            role = user.get("role")
+            if not role:
+                prefs = str(user.get("preferences", ""))
+                if prefs.startswith("business:") or merchant_places_collection.find_one({"ownerEmail": req_email}):
+                    role = "business"
+                else:
+                    role = "tourist"
+
+            user_data = user.get("userData") or {
+                "name": user.get("name", ""),
+                "email": user.get("email", req_email),
+                "role": role,
+            }
+            if isinstance(user_data, dict) and "role" not in user_data:
+                user_data["role"] = role
+
+            return {
+                "status": "returning_user",
+                "pref": user.get("preferences", ""),
+                "role": role,
+                "userData": user_data
+            }
+
+        # Fallback check if user email is registered in merchant places
+        merchant = merchant_places_collection.find_one({"ownerEmail": req_email})
+        if merchant:
+            return {
+                "status": "returning_user",
+                "pref": "business:" + (merchant.get("tag") or "cafe"),
+                "role": "business",
+                "userData": {
+                    "name": merchant.get("ownerName", ""),
+                    "email": merchant.get("ownerEmail", req_email),
+                    "businessName": merchant.get("businessName", merchant.get("name", "")),
+                    "businessType": merchant.get("businessType", "cafe"),
+                    "businessLicense": merchant.get("businessLicense", ""),
+                    "businessPhone": merchant.get("businessPhone", ""),
+                    "role": "business"
+                }
+            }
+
         return {"status": "new_user"}
     except Exception:
         return {"status": "new_user"}
@@ -492,16 +675,34 @@ def login_user(req: LoginRequest):
 @app.post("/save_user")
 def save_user(user: UserInfo):
     try:
-        existing_user = users_collection.find_one({"email": user.email.strip()})
+        req_email = user.email.strip()
+        existing_user = users_collection.find_one({"email": req_email})
+        user_role = user.role or "tourist"
+        user_data = user.userData or {
+            "name": user.name.strip(),
+            "email": req_email,
+            "role": user_role
+        }
+
+        update_doc = {
+            "name": user.name.strip(),
+            "email": req_email,
+            "preferences": user.preferences,
+            "role": user_role,
+            "userData": user_data
+        }
+
         if existing_user:
-            return {"status": "success", "message": "มีข้อมูลอยู่แล้ว"}
-        
-        users_collection.insert_one({
-            "timestamp": datetime.now(),
-            "name": user.name,
-            "email": user.email,
-            "preferences": user.preferences
-        })
+            # Password is only ever set at registration - never overwritten by a later
+            # profile/preferences update through this same endpoint.
+            users_collection.update_one({"email": req_email}, {"$set": update_doc})
+            return {"status": "success", "message": "อัปเดตข้อมูลผู้ใช้เรียบร้อย"}
+
+        update_doc["timestamp"] = datetime.now()
+        update_doc["status"] = "active"
+        if user.password:
+            update_doc["passwordHash"] = hash_password(user.password)
+        users_collection.insert_one(update_doc)
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -517,10 +718,20 @@ def recommend_trip(req: TripRequest):
                     try:
                         mood_encoded = le_mood.transform([mood])[0]
                         cat_encoded = le_category.transform([cat])[0]
-                        prediction = ai_model.predict([[req.budget, req.time_hours, mood_encoded, cat_encoded]])
-                        place_result = le_place.inverse_transform(prediction)[0]
-                        recommended_names.add(place_result)
-                    except ValueError: 
+                        # predict_proba + rank instead of .predict(): the model can rank a place from
+                        # the wrong category first when training data is sparse, so walk the ranked
+                        # candidates and take the first one that actually belongs to the requested
+                        # category, instead of trusting the single top-1 class blindly.
+                        proba = ai_model.predict_proba([[req.budget, req.time_hours, mood_encoded, cat_encoded]])[0]
+                        ranked_class_indices = proba.argsort()[::-1]
+                        for class_idx in ranked_class_indices:
+                            if proba[class_idx] <= 0:
+                                break
+                            place_result = le_place.inverse_transform([ai_model.classes_[class_idx]])[0]
+                            if place_category_map.get(place_result) == cat:
+                                recommended_names.add(place_result)
+                                break
+                    except ValueError:
                         continue
 
         load_places_db()

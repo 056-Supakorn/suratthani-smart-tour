@@ -634,13 +634,16 @@ function App() {
       })()}
 
       {vrMode && currentVrPlace && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: '#000', zIndex: 9999, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '15px 20px', backgroundColor: 'rgba(20, 20, 20, 0.9)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333' }}>
-            <div><h3 style={{ color: '#1DB954', margin: 0, fontSize: '18px' }}>🕶️ โหมดโลกเสมือนจริง (VR 360°)</h3><p style={{ color: '#ccc', margin: '5px 0 0 0', fontSize: '12px' }}>สถานที่: {currentVrPlace.name}</p></div>
-            <button onClick={() => setVrMode(false)} style={{ background: '#ff4444', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}>✕ ปิด</button>
+        <div className="vr-viewer-overlay">
+          <div className="vr-viewer-header">
+            <div className="vr-viewer-heading">
+              <h3 className="vr-viewer-title">🕶️ โหมดโลกเสมือนจริง (VR 360°)</h3>
+              <p className="vr-viewer-place" title={currentVrPlace.name}>สถานที่: {currentVrPlace.name}</p>
+            </div>
+            <button type="button" className="vr-viewer-close-btn" onClick={() => setVrMode(false)}>✕ ปิด</button>
           </div>
-          <div style={{ flex: 1, position: 'relative', width: '100%', height: 'calc(100vh - 70px)', overflow: 'hidden' }}>
-            <div id="panorama-container" style={{ width: '100%', height: '100%' }}></div>
+          <div className="vr-viewer-body">
+            <div id="panorama-container"></div>
           </div>
         </div>
       )}

@@ -136,7 +136,7 @@ export default function FinalRouteScreen({
                   </div>
                 )}
 
-                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'flex-end' }}>
                   {place.vr_image && (
                     <button
                       type="button"

@@ -146,7 +146,7 @@ export default function DetailScreen({
             </div>
 
             {/* Navigation & VR Action Buttons */}
-            <div style={{ display: 'grid', gridTemplateColumns: selectedAttraction.vr_image ? 'repeat(2, 1fr)' : '1fr', gap: '12px', marginBottom: '28px' }}>
+            <div className={`detail-action-btns${selectedAttraction.vr_image ? '' : ' single'}`}>
               <a
                 href={
                   selectedAttraction.lat && selectedAttraction.lng
@@ -156,7 +156,7 @@ export default function DetailScreen({
                 target="_blank"
                 rel="noopener noreferrer"
                 className="ai-planner-cta-btn"
-                style={{ justifyContent: 'center', textDecoration: 'none', background: 'linear-gradient(135deg, #123e2f 0%, #059669 100%)' }}
+                style={{ textDecoration: 'none', background: 'linear-gradient(135deg, #123e2f 0%, #059669 100%)' }}
               >
                 <span>📍 เปิดแอปนำทาง (Google Maps)</span>
               </a>
@@ -166,7 +166,6 @@ export default function DetailScreen({
                   type="button"
                   className="ai-planner-cta-btn"
                   onClick={() => onOpenVR(selectedAttraction)}
-                  style={{ justifyContent: 'center' }}
                 >
                   <span>🕶️ เข้าสู่โหมด VR 360°</span>
                 </button>

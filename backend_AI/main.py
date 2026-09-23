@@ -25,7 +25,7 @@ import uuid
 from datetime import datetime
 import warnings
 import math
-from pymongo import MongoClient
+from pymongo import MongoClient, UpdateOne
 import gridfs
 
 warnings.filterwarnings('ignore')
@@ -101,15 +101,17 @@ if os.path.isdir(UPLOAD_DIR):
 PLACES_FILE = 'places_db.csv'
 ATTRACTIONS_DB = []
 
-def load_places_db():
-    global ATTRACTIONS_DB
+def seed_places_from_csv():
+    """ซิงก์สถานที่จาก CSV เข้า MongoDB - เรียกครั้งเดียวตอนเปิดเซิร์ฟเวอร์เท่านั้น
+    (เดิมทำทุก request ทำให้หน้าแรกช้า ~10 วินาทีบน Render)"""
     print("🔄 กำลังตรวจสอบและซิงก์ข้อมูลสถานที่เข้า MongoDB...")
     if os.path.exists(PLACES_FILE):
         try:
             df = pd.read_csv(PLACES_FILE, encoding='utf-8-sig')
             df = df.fillna('')
             places_to_insert = df.to_dict('records')
-            
+
+            operations = []
             for place in places_to_insert:
                 query = {"id": int(place["id"])}
                 # $setOnInsert (not $set) so this seed-sync never clobbers a place
@@ -130,13 +132,20 @@ def load_places_db():
                         "price": "",
                     }
                 }
-                places_collection.update_one(query, update_data, upsert=True)
+                operations.append(UpdateOne(query, update_data, upsert=True))
+            if operations:
+                # one round trip instead of one per place
+                places_collection.bulk_write(operations, ordered=False)
             print("✅ ซิงก์ข้อมูลสถานที่ใน MongoDB สำเร็จ (ไม่ต้อง Drop ทิ้ง)!")
         except Exception as e:
             print(f"❌ เกิดข้อผิดพลาดในการอ่านไฟล์ {PLACES_FILE}: {e}")
-            
+
+def load_places_db():
+    """โหลดรายการสถานที่ล่าสุดจาก MongoDB (query เดียว) - เรียกได้ทุก request"""
+    global ATTRACTIONS_DB
     ATTRACTIONS_DB = list(places_collection.find({"deleted": {"$ne": True}}, {"_id": 0}))
 
+seed_places_from_csv()
 load_places_db()
 
 CATEGORY_MAP = {"sea": "ทะเล", "mountain": "ธรรมชาติ", "temple": "วัด", "local": "ชุมชน", "cafe": "คาเฟ่", "food": "ร้านอาหาร"}
@@ -201,6 +210,8 @@ def calculate_distance(lat1, lon1, lat2, lon2):
 # ค่าสมมติสำหรับคำนวณว่าทริปหนึ่งๆ ใช้เวลาไปเท่าไหร่ (ไม่มีข้อมูล "เวลาที่ควรอยู่ต่อสถานที่" จริงในระบบ)
 DEFAULT_VISIT_DURATION_HOURS = 1.5  # เวลาโดยประมาณที่ใช้เที่ยวต่อ 1 สถานที่
 AVG_TRAVEL_SPEED_KMH = 40.0  # ความเร็วเฉลี่ยโดยประมาณสำหรับประเมินเวลาเดินทางระหว่างจุด
+# ถ้าสถานที่ที่ใกล้ที่สุดยังไกลเกินนี้ ถือว่าผู้ใช้อยู่นอกจังหวัด (จังหวัดกว้างราว 150-200 กม.)
+FAR_FROM_PROVINCE_KM = 150.0
 
 def parse_price_to_number(price_str) -> float:
     """แปลงข้อความราคา (เช่น '50 บาท/คน', 'ฟรี', '') ให้เป็นตัวเลขบาทโดยประมาณ"""
@@ -774,17 +785,28 @@ def recommend_trip(req: TripRequest):
 
         # 5. เรียงลำดับผู้สมัครทั้งหมดตาม GPS จากใกล้ไปไกล (ถ้ามีพิกัด) พร้อมประเมินเวลาเดินทางแต่ละช่วง
         ordered_candidates = []
+        far_from_province = False
         if req.user_lat and req.user_lng:
+            # distance_km = ระยะจากตัวผู้ใช้ตรงไปยังสถานที่นั้นเสมอ (ไม่ใช่ระยะจากจุดก่อนหน้า)
+            for p in places_data:
+                p['distance_km'] = round(calculate_distance(req.user_lat, req.user_lng, float(p['lat']), float(p['lng'])), 1)
+
+            # ผู้ใช้อยู่นอกจังหวัด (เช่น กรุงเทพฯ): ไม่นับเวลาเดินทางมาถึงสุราษฎร์ฯ ในเวลาทริป
+            # ไม่งั้นแค่ขาแรกก็กินเวลาเกินทุกทริป และระบบจะหาสถานที่ให้ไม่ได้เลย
+            far_from_province = min(p['distance_km'] for p in places_data) > FAR_FROM_PROVINCE_KM
+
             remaining = places_data.copy()
             current_lat, current_lng = req.user_lat, req.user_lng
+            is_first_leg = True
             while remaining:
                 nearest_place = min(remaining, key=lambda p: calculate_distance(current_lat, current_lng, float(p['lat']), float(p['lng'])))
-                dist = calculate_distance(current_lat, current_lng, float(nearest_place['lat']), float(nearest_place['lng']))
-                nearest_place['distance_km'] = round(dist, 1)
-                nearest_place['_leg_travel_hours'] = dist / AVG_TRAVEL_SPEED_KMH
+                leg_dist = calculate_distance(current_lat, current_lng, float(nearest_place['lat']), float(nearest_place['lng']))
+                count_leg = not (is_first_leg and far_from_province)
+                nearest_place['_leg_travel_hours'] = leg_dist / AVG_TRAVEL_SPEED_KMH if count_leg else 0.0
                 ordered_candidates.append(nearest_place)
                 current_lat, current_lng = float(nearest_place['lat']), float(nearest_place['lng'])
                 remaining.remove(nearest_place)
+                is_first_leg = False
         else:
             for p in places_data:
                 p['_leg_travel_hours'] = 0.0
@@ -818,6 +840,7 @@ def recommend_trip(req: TripRequest):
             "estimated_cost": round(total_cost, 2),
             "estimated_time_hours": round(total_time, 2),
             "budget_warning": budget_warning,
+            "far_from_province": far_from_province,
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}

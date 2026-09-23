@@ -68,14 +68,12 @@ export default function HomeScreen({
     return `${loc}, สุราษฎร์ธานี`;
   };
 
-  // Calculate or display approximate distance
-  const getDistanceText = (place, index) => {
-    if (place.distance_km) {
+  // Real distance from the user's GPS position; without a position we don't invent a number.
+  const getDistanceText = (place) => {
+    if (place.distance_km != null) {
       return `ระยะทาง ${place.distance_km} กม.`;
     }
-    const defaultDistances = [35, 42, 67, 18, 25, 54, 80, 15, 62, 48, 28, 90];
-    const dist = defaultDistances[index % defaultDistances.length];
-    return `ระยะทาง ${dist} กม.`;
+    return 'สุราษฎร์ธานี';
   };
 
   const displayName = userName || localStorage.getItem('userName') || 'สมชาย';
@@ -297,7 +295,7 @@ export default function HomeScreen({
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                             <circle cx="12" cy="10" r="3"></circle>
                           </svg>
-                          <span>{getDistanceText(place, index)}</span>
+                          <span>{getDistanceText(place)}</span>
                         </div>
 
                         <div className="card-action-btns-wrap">

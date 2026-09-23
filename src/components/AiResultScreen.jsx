@@ -13,6 +13,7 @@ export default function AiResultScreen({
   estimatedCost,
   estimatedTimeHours,
   budgetWarning,
+  farFromProvince,
   onViewDetail,
   onResetSearch,
   onBackToHome,
@@ -225,6 +226,22 @@ export default function AiResultScreen({
               }}
             >
               ⚠️ {budgetWarning}
+            </div>
+          )}
+          {farFromProvince && (
+            <div
+              style={{
+                marginTop: '14px',
+                background: 'rgba(255,255,255,0.9)',
+                color: '#1e40af',
+                borderRadius: '14px',
+                padding: '12px 16px',
+                fontSize: '13px',
+                fontWeight: 600,
+                zIndex: 2,
+              }}
+            >
+              ℹ️ ตำแหน่งของคุณอยู่นอกจังหวัดสุราษฎร์ธานี ระยะทางที่แสดงคือระยะจากตำแหน่งปัจจุบันของคุณ โดยเวลาทริปที่ระบุจะนับตั้งแต่ถึงสถานที่แรกในสุราษฎร์ธานี
             </div>
           )}
         </section>

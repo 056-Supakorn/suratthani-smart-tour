@@ -1,4 +1,185 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { API_BASE_URL } from '../apiConfig';
+
+// Forgot password: request a 6-digit code by email, then set a new password with it.
+function ForgotPasswordForm({ initialEmail, onDone, onCancel }) {
+  const [step, setStep] = useState('email'); // 'email' | 'code'
+  const [email, setEmail] = useState(initialEmail || '');
+  const [code, setCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [isBusy, setIsBusy] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return undefined;
+    const timer = setTimeout(() => setCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
+  const requestCode = async (e) => {
+    e && e.preventDefault();
+    if (!email.trim()) return;
+    setIsBusy(true);
+    setError('');
+    try {
+      const { data } = await axios.post(`${API_BASE_URL}/password_reset/request`, { email: email.trim() });
+      if (data.status === 'success') {
+        setMessage(data.message);
+        setStep('code');
+        setCooldown(60);
+      } else {
+        setError(data.message || 'ส่งรหัสไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+        if (data.retryAfter) {
+          setCooldown(data.retryAfter);
+          setStep('code');
+        }
+      }
+    } catch (err) {
+      setError('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const confirmReset = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (!/^\d{6}$/.test(code.trim())) {
+      setError('กรุณากรอกรหัสยืนยัน 6 หลักจากอีเมล');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError('รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน');
+      return;
+    }
+    setIsBusy(true);
+    try {
+      const { data } = await axios.post(`${API_BASE_URL}/password_reset/confirm`, {
+        email: email.trim(),
+        code: code.trim(),
+        new_password: newPassword,
+      });
+      if (data.status === 'success') {
+        onDone(email.trim(), data.message);
+      } else {
+        setError(data.message || 'ตั้งรหัสผ่านใหม่ไม่สำเร็จ');
+      }
+    } catch (err) {
+      setError('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  return (
+    <div className="login-form-element">
+      <div className="login-header-wrapper" style={{ marginBottom: '8px' }}>
+        <h2 className="login-heading-2">ลืมรหัสผ่าน</h2>
+        <p className="login-heading-desc">
+          {step === 'email'
+            ? 'กรอกอีเมลที่ใช้สมัคร เราจะส่งรหัสยืนยัน 6 หลักไปให้'
+            : 'กรอกรหัสยืนยันจากอีเมล แล้วตั้งรหัสผ่านใหม่'}
+        </p>
+      </div>
+
+      {step === 'email' ? (
+        <form onSubmit={requestCode}>
+          <div className="login-form-group">
+            <label className="login-field-label"><span>อีเมล</span></label>
+            <div className="login-input-box-wrapper">
+              <input
+                type="email"
+                placeholder="example@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="login-text-input"
+                required
+              />
+            </div>
+          </div>
+          {error && <p className="forgot-error-text">{error}</p>}
+          <button type="submit" className="login-primary-submit-btn" disabled={!email.trim() || isBusy}>
+            <span>{isBusy ? 'กำลังส่งรหัส...' : 'ส่งรหัสยืนยันทางอีเมล'}</span>
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={confirmReset}>
+          {message && <p className="forgot-info-text">{message}</p>}
+          <div className="login-form-group">
+            <label className="login-field-label"><span>รหัสยืนยัน 6 หลัก</span></label>
+            <div className="login-input-box-wrapper">
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                placeholder="เช่น 123456"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                className="login-text-input"
+                required
+              />
+            </div>
+          </div>
+          <div className="login-form-group">
+            <label className="login-field-label"><span>รหัสผ่านใหม่</span></label>
+            <div className="login-input-box-wrapper">
+              <input
+                type="password"
+                autoComplete="new-password"
+                placeholder="อย่างน้อย 6 ตัวอักษร"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="login-text-input"
+                required
+              />
+            </div>
+          </div>
+          <div className="login-form-group">
+            <label className="login-field-label"><span>ยืนยันรหัสผ่านใหม่</span></label>
+            <div className="login-input-box-wrapper">
+              <input
+                type="password"
+                autoComplete="new-password"
+                placeholder="กรอกรหัสผ่านใหม่อีกครั้ง"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="login-text-input"
+                required
+              />
+            </div>
+          </div>
+          {error && <p className="forgot-error-text">{error}</p>}
+          <button type="submit" className="login-primary-submit-btn" disabled={isBusy}>
+            <span>{isBusy ? 'กำลังบันทึก...' : 'ตั้งรหัสผ่านใหม่'}</span>
+          </button>
+          <button
+            type="button"
+            className="login-forgot-btn forgot-resend-btn"
+            onClick={requestCode}
+            disabled={cooldown > 0 || isBusy}
+          >
+            {cooldown > 0 ? `ขอรหัสใหม่ได้ในอีก ${cooldown} วินาที` : 'ไม่ได้รับรหัส? ส่งรหัสอีกครั้ง'}
+          </button>
+        </form>
+      )}
+
+      <div className="login-register-prompt-box">
+        <button type="button" className="login-register-btn-link" onClick={onCancel}>
+          ← กลับไปหน้าเข้าสู่ระบบ
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function LoginScreen({
   inputEmail,
@@ -12,6 +193,8 @@ export default function LoginScreen({
   onGoToRegister,
 }) {
   const [rememberMe, setRememberMe] = useState(true);
+  const [showForgot, setShowForgot] = useState(false);
+  const [notice, setNotice] = useState('');
 
   const handleSubmit = (e) => {
     e && e.preventDefault && e.preventDefault();
@@ -29,7 +212,15 @@ export default function LoginScreen({
 
   const handleForgotPassword = (e) => {
     e.preventDefault();
-    alert('สำหรับผู้ใช้งานระบบ Smart Tour สุราษฎร์ธานี สามารถเข้าสู่ระบบได้ทันทีโดยใช้อีเมลของคุณครับ');
+    setNotice('');
+    setShowForgot(true);
+  };
+
+  const handleResetDone = (email, message) => {
+    setInputEmail(email);
+    setInputPassword('');
+    setNotice(message);
+    setShowForgot(false);
   };
 
   return (
@@ -117,6 +308,15 @@ export default function LoginScreen({
             <p className="login-heading-desc">กรุณากรอกข้อมูลของคุณเพื่อเข้าใช้งานระบบ</p>
           </div>
 
+          {showForgot ? (
+            <ForgotPasswordForm
+              initialEmail={inputEmail}
+              onDone={handleResetDone}
+              onCancel={() => setShowForgot(false)}
+            />
+          ) : (
+          <>
+          {notice && <p className="forgot-info-text">{notice}</p>}
           {/* Form */}
           <form onSubmit={handleSubmit} className="login-form-element">
             {/* Input Email */}
@@ -212,6 +412,8 @@ export default function LoginScreen({
               ลงทะเบียนเข้าใช้งานที่นี่ ✨
             </button>
           </div>
+          </>
+          )}
 
           {/* Security Note Footer */}
           <div className="login-security-footer">

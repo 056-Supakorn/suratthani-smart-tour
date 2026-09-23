@@ -21,11 +21,13 @@ import hmac
 import json
 import os
 import time
+import urllib.error
+import urllib.request
 import random
 import re
 import secrets
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 import warnings
 import math
 from pymongo import MongoClient, UpdateOne
@@ -85,6 +87,9 @@ try:
     places_collection = db["places"]
     dataset_collection = db["ai_dataset"]
     merchant_places_collection = db["merchant_places"]
+    password_resets_collection = db["password_resets"]
+    # MongoDB ลบรหัส OTP ที่หมดอายุทิ้งให้อัตโนมัติ
+    password_resets_collection.create_index("expireAt", expireAfterSeconds=0)
     uploads_fs = gridfs.GridFS(db, collection="uploads")
     print("✅ [DB READY] เชื่อมต่อ MongoDB สำเร็จ!")
 except Exception as e:
@@ -249,6 +254,14 @@ class LoginRequest(BaseModel):
     email: str
     password: Optional[str] = None
 
+class PasswordResetRequest(BaseModel):
+    email: str
+
+class PasswordResetConfirm(BaseModel):
+    email: str
+    code: str
+    new_password: str
+
 class MerchantPlaceSubmission(BaseModel):
     ownerEmail: str
     ownerName: str = ""
@@ -381,7 +394,8 @@ def _sign(payload: str) -> str:
     return hmac.new(SESSION_SECRET.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
 
 def create_session_token(email: str, role: str) -> str:
-    body = json.dumps({"email": email, "role": role, "exp": int(time.time()) + SESSION_TTL_SECONDS})
+    now = int(time.time())
+    body = json.dumps({"email": email, "role": role, "iat": now, "exp": now + SESSION_TTL_SECONDS})
     payload = base64.urlsafe_b64encode(body.encode("utf-8")).decode("ascii").rstrip("=")
     return f"{payload}.{_sign(payload)}"
 
@@ -409,10 +423,51 @@ def require_user(authorization: str = Header(None)) -> dict:
     session = session_from_header(authorization)
     if not session:
         raise HTTPException(status_code=401, detail="กรุณาเข้าสู่ระบบใหม่อีกครั้ง")
-    user = users_collection.find_one({"email": session["email"]}, {"status": 1})
+    user = users_collection.find_one({"email": session["email"]}, {"status": 1, "passwordChangedAt": 1})
     if user and user.get("status") == "suspended":
         raise HTTPException(status_code=403, detail="บัญชีนี้ถูกระงับการใช้งาน")
+    # รีเซ็ตรหัสผ่านแล้ว: token ที่ออกก่อนหน้านั้น (เช่น บนเครื่องที่ถูกขโมยรหัสไป) ใช้ไม่ได้อีก
+    if user and session.get("iat", 0) < user.get("passwordChangedAt", 0):
+        raise HTTPException(status_code=401, detail="กรุณาเข้าสู่ระบบใหม่อีกครั้ง")
     return session
+
+# ==========================================
+# ✉️ ส่งอีเมล (รหัส OTP รีเซ็ตรหัสผ่าน)
+# ส่งผ่าน HTTP API ของ Brevo แทน SMTP เพราะ Render แพ็กเกจฟรีบล็อกพอร์ต SMTP (25/465/587)
+# ==========================================
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+EMAIL_SENDER = os.getenv("EMAIL_SENDER", "")  # อีเมลผู้ส่งที่ยืนยันแล้วใน Brevo
+EMAIL_SENDER_NAME = os.getenv("EMAIL_SENDER_NAME", "Surat Smart Tour")
+# สำหรับทดสอบบนเครื่องเท่านั้น: พิมพ์อีเมลลง log แทนการส่งจริง
+EMAIL_DEV_LOG = os.getenv("EMAIL_DEV_LOG", "") == "1"
+
+def email_configured() -> bool:
+    return EMAIL_DEV_LOG or bool(BREVO_API_KEY and EMAIL_SENDER)
+
+def send_email(to_email: str, subject: str, text: str, html: str) -> bool:
+    if EMAIL_DEV_LOG:
+        print(f"📧 [EMAIL_DEV_LOG] to={to_email} subject={subject}\n{text}")
+        return True
+    payload = json.dumps({
+        "sender": {"email": EMAIL_SENDER, "name": EMAIL_SENDER_NAME},
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "textContent": text,
+        "htmlContent": html,
+    }).encode("utf-8")
+    request = urllib.request.Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=payload,
+        method="POST",
+        headers={"api-key": BREVO_API_KEY, "Content-Type": "application/json", "Accept": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response:
+            return 200 <= response.status < 300
+    except (urllib.error.URLError, TimeoutError) as e:
+        detail = e.read().decode("utf-8", "replace")[:300] if isinstance(e, urllib.error.HTTPError) else str(e)
+        print(f"❌ [EMAIL ERROR] ส่งอีเมลถึง {to_email} ไม่สำเร็จ: {detail}")
+        return False
 
 # ==========================================
 # 🌐 API Endpoints
@@ -903,6 +958,99 @@ def plan_route_hours(places, gps, far_from_province):
         cur_lat, cur_lng = float(nxt['lat']), float(nxt['lng'])
         remaining.remove(nxt)
     return ordered, hours
+
+# ==========================================
+# 🔑 ลืมรหัสผ่าน: ส่งรหัส OTP 6 หลักทางอีเมล แล้วใช้รหัสนั้นตั้งรหัสผ่านใหม่
+# ==========================================
+RESET_CODE_TTL_SECONDS = 15 * 60
+RESET_RESEND_COOLDOWN_SECONDS = 60
+RESET_MAX_REQUESTS_PER_HOUR = 5
+RESET_MAX_ATTEMPTS = 5
+# ตอบข้อความเดียวกันไม่ว่าอีเมลจะมีบัญชีหรือไม่ เพื่อไม่ให้ใช้ปุ่มนี้ตรวจว่าใครสมัครไว้บ้าง
+RESET_SENT_MESSAGE = "ถ้าอีเมลนี้มีบัญชีในระบบ เราได้ส่งรหัสยืนยัน 6 หลักไปแล้ว กรุณาตรวจสอบกล่องจดหมาย (รวมถึงโฟลเดอร์สแปม)"
+
+def _reset_code_hash(email: str, code: str) -> str:
+    return hmac.new(SESSION_SECRET.encode("utf-8"), f"reset:{email}:{code}".encode("utf-8"), hashlib.sha256).hexdigest()
+
+@app.post("/password_reset/request")
+def request_password_reset(body: PasswordResetRequest):
+    email = body.email.strip()
+    if not email:
+        return {"status": "error", "message": "กรุณากรอกอีเมล"}
+    if not email_configured():
+        return {"status": "error", "message": "ระบบส่งอีเมลยังไม่พร้อมใช้งาน กรุณาติดต่อผู้ดูแลระบบ"}
+
+    user = users_collection.find_one({"email": email}, {"_id": 1})
+    is_admin_email = bool(ADMIN_EMAIL) and email.lower() == ADMIN_EMAIL.strip().lower()
+    if not user or is_admin_email:
+        # รหัสแอดมินอยู่ในการตั้งค่าเซิร์ฟเวอร์ รีเซ็ตผ่านหน้านี้ไม่ได้
+        return {"status": "success", "message": RESET_SENT_MESSAGE}
+
+    now = time.time()
+    recent = list(password_resets_collection.find({"email": email, "createdAt": {"$gt": now - 3600}}).sort("createdAt", -1))
+    if recent:
+        wait = int(RESET_RESEND_COOLDOWN_SECONDS - (now - recent[0]["createdAt"]))
+        if wait > 0:
+            return {"status": "error", "message": f"กรุณารอ {wait} วินาทีก่อนขอรหัสใหม่", "retryAfter": wait}
+    if len(recent) >= RESET_MAX_REQUESTS_PER_HOUR:
+        return {"status": "error", "message": "ขอรหัสบ่อยเกินไป กรุณาลองใหม่ในอีก 1 ชั่วโมง"}
+
+    code = f"{secrets.randbelow(10**6):06d}"
+    minutes = RESET_CODE_TTL_SECONDS // 60
+    sent = send_email(
+        email,
+        "รหัสรีเซ็ตรหัสผ่าน - ระบบแนะนำสถานที่ท่องเที่ยวสุราษฎร์ธานี",
+        f"รหัสยืนยันสำหรับตั้งรหัสผ่านใหม่ของคุณคือ {code}\n"
+        f"รหัสนี้ใช้ได้ {minutes} นาที\n"
+        "ถ้าคุณไม่ได้ขอรีเซ็ตรหัสผ่าน ไม่ต้องทำอะไร รหัสผ่านเดิมของคุณยังใช้ได้ตามปกติ",
+        f"<p>รหัสยืนยันสำหรับตั้งรหัสผ่านใหม่ของคุณคือ</p>"
+        f"<p style=\"font-size:28px;font-weight:bold;letter-spacing:6px\">{code}</p>"
+        f"<p>รหัสนี้ใช้ได้ {minutes} นาที</p>"
+        "<p style=\"color:#64748b\">ถ้าคุณไม่ได้ขอรีเซ็ตรหัสผ่าน ไม่ต้องทำอะไร รหัสผ่านเดิมของคุณยังใช้ได้ตามปกติ</p>",
+    )
+    if not sent:
+        return {"status": "error", "message": "ส่งอีเมลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"}
+
+    password_resets_collection.insert_one({
+        "email": email,
+        "codeHash": _reset_code_hash(email, code),
+        "createdAt": now,
+        "expiresAt": now + RESET_CODE_TTL_SECONDS,
+        # ใช้ให้ MongoDB ลบเอกสารทิ้งเองหลังหมดช่วงจำกัดการขอรหัส (1 ชั่วโมง)
+        "expireAt": datetime.fromtimestamp(now + 3600, tz=timezone.utc),
+        "attempts": 0,
+    })
+    return {"status": "success", "message": RESET_SENT_MESSAGE}
+
+@app.post("/password_reset/confirm")
+def confirm_password_reset(body: PasswordResetConfirm):
+    email = body.email.strip()
+    code = body.code.strip()
+    if len(body.new_password) < MIN_PASSWORD_LENGTH:
+        return {"status": "error", "message": f"รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย {MIN_PASSWORD_LENGTH} ตัวอักษร"}
+
+    now = time.time()
+    record = password_resets_collection.find_one({"email": email}, sort=[("createdAt", -1)])
+    if not record or record.get("used") or record["expiresAt"] < now:
+        return {"status": "error", "message": "รหัสยืนยันหมดอายุหรือไม่ถูกต้อง กรุณาขอรหัสใหม่"}
+    if record["attempts"] >= RESET_MAX_ATTEMPTS:
+        return {"status": "error", "message": "กรอกรหัสผิดเกินจำนวนครั้งที่กำหนด กรุณาขอรหัสใหม่"}
+    if not hmac.compare_digest(_reset_code_hash(email, code), record["codeHash"]):
+        password_resets_collection.update_one({"_id": record["_id"]}, {"$inc": {"attempts": 1}})
+        remaining = RESET_MAX_ATTEMPTS - record["attempts"] - 1
+        if remaining <= 0:
+            return {"status": "error", "message": "กรอกรหัสผิดเกินจำนวนครั้งที่กำหนด กรุณาขอรหัสใหม่"}
+        return {"status": "error", "message": f"รหัสยืนยันไม่ถูกต้อง (เหลืออีก {remaining} ครั้ง)"}
+
+    result = users_collection.update_one(
+        {"email": email},
+        {"$set": {"passwordHash": hash_password(body.new_password), "passwordChangedAt": int(now)}},
+    )
+    if result.matched_count == 0:
+        return {"status": "error", "message": "ไม่พบบัญชีผู้ใช้นี้"}
+    # ใช้รหัสได้ครั้งเดียว (เก็บประวัติไว้นับโควตาการขอรหัสต่อชั่วโมง)
+    password_resets_collection.update_many({"email": email}, {"$set": {"used": True}})
+    return {"status": "success", "message": "ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่"}
 
 @app.post("/recommend")
 def recommend_trip(req: TripRequest):

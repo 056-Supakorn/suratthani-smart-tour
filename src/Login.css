@@ -3147,6 +3147,53 @@
   min-width: 108px;
 }
 
+/* Forgot-password form (LoginScreen) */
+.forgot-info-text,
+.forgot-error-text {
+  margin: 0 0 14px 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.forgot-info-text {
+  background: #ecfdf5;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.forgot-error-text {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.dark-theme .forgot-info-text {
+  background: #064e3b33;
+  color: #6ee7b7;
+  border-color: #065f46;
+}
+
+.dark-theme .forgot-error-text {
+  background: #7f1d1d33;
+  color: #fca5a5;
+  border-color: #7f1d1d;
+}
+
+.forgot-resend-btn {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  text-align: center;
+}
+
+.forgot-resend-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .ai-field-error {
   margin: 6px 0 0 0;
   font-size: 12.5px;

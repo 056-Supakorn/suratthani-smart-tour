@@ -216,6 +216,19 @@ function App() {
     );
   };
 
+  // หน้าแผนการเดินทาง: ต้องเริ่มจากตำแหน่งผู้ใช้ ถ้ายังไม่มีพิกัดให้ขอตำแหน่งทันทีที่เปิดหน้า
+  useEffect(() => {
+    if (currentScreen === 'final-route' && (!userLat || !userLng)) getLocation();
+  }, [currentScreen]);
+
+  // ได้พิกัดแล้วแต่เส้นทางยังเรียงแบบไม่มี GPS -> จัดเรียงใหม่ให้เริ่มจากตำแหน่งผู้ใช้
+  useEffect(() => {
+    if (currentScreen !== 'final-route' || !userLat || !userLng) return;
+    if (finalRoutePlan.length > 0 && finalRoutePlan.some((p) => p.route_distance === undefined)) {
+      setFinalRoutePlan(orderRouteFromUser(finalRoutePlan, userLat, userLng));
+    }
+  }, [currentScreen, userLat, userLng, finalRoutePlan]);
+
   const handleLogin = async (overrideEmail) => {
     const emailToUse = (overrideEmail ?? inputEmail).trim();
     if (!emailToUse) {
@@ -388,44 +401,47 @@ function App() {
     return R * c;
   };
 
+  // 🌟 จัดเรียงแบบจุดต่อจุด (Point-to-Point) เริ่มจากผู้ใช้ -> ที่ใกล้สุด -> ที่ใกล้สุดถัดไป
+  const orderRouteFromUser = (places, startLat, startLng) => {
+    const unvisited = places.map((p) => ({ ...p }));
+    const route = [];
+    let currentLat = startLat;
+    let currentLng = startLng;
+    while (unvisited.length > 0) {
+      let nearestIdx = 0;
+      let minDist = calculateDistance(currentLat, currentLng, parseFloat(unvisited[0].lat), parseFloat(unvisited[0].lng));
+
+      for (let i = 1; i < unvisited.length; i++) {
+        let d = calculateDistance(currentLat, currentLng, parseFloat(unvisited[i].lat), parseFloat(unvisited[i].lng));
+        if (d < minDist) {
+          minDist = d;
+          nearestIdx = i;
+        }
+      }
+
+      const nextPlace = unvisited[nearestIdx];
+      nextPlace.route_distance = minDist;
+      route.push(nextPlace);
+
+      currentLat = parseFloat(nextPlace.lat);
+      currentLng = parseFloat(nextPlace.lng);
+      unvisited.splice(nearestIdx, 1);
+    }
+    return route;
+  };
+
   // 🌟 สร้างเส้นทางสุดท้ายหลังจากผู้ใช้เลือกสถานที่เสร็จ
   const generateFinalRoute = () => {
     if (selectedTripPlaces.length === 0) {
       alert('กรุณาเลือกสถานที่อย่างน้อย 1 แห่งเพื่อสร้างแผนการเดินทางครับ');
       return;
     }
-    
-    let unvisited = [...selectedTripPlaces];
-    let route = [];
-    let currentLat = userLat;
-    let currentLng = userLng;
 
-    if (!currentLat || !currentLng) {
-      // หากไม่มี GPS ให้เรียงตามระยะทางที่ Backend คำนวณมาให้ตอนแรก
-      route = unvisited.sort((a, b) => (a.distance_km || 0) - (b.distance_km || 0));
-    } else {
-      // จัดเรียงแบบจุดต่อจุด (Point-to-Point) เริ่มจากผู้ใช้ -> ที่ใกล้สุด -> ที่ใกล้สุดถัดไป
-      while (unvisited.length > 0) {
-        let nearestIdx = 0;
-        let minDist = calculateDistance(currentLat, currentLng, parseFloat(unvisited[0].lat), parseFloat(unvisited[0].lng));
-        
-        for (let i = 1; i < unvisited.length; i++) {
-          let d = calculateDistance(currentLat, currentLng, parseFloat(unvisited[i].lat), parseFloat(unvisited[i].lng));
-          if (d < minDist) {
-            minDist = d;
-            nearestIdx = i;
-          }
-        }
-        
-        let nextPlace = unvisited[nearestIdx];
-        nextPlace.route_distance = minDist; 
-        route.push(nextPlace);
-        
-        currentLat = parseFloat(nextPlace.lat);
-        currentLng = parseFloat(nextPlace.lng);
-        unvisited.splice(nearestIdx, 1);
-      }
-    }
+    // หากยังไม่มี GPS ให้เรียงตามระยะทางที่ Backend คำนวณมาให้ตอนแรกไปก่อน
+    // แล้วหน้าแผนการเดินทางจะขอตำแหน่งและจัดเรียงใหม่ให้เริ่มจากตำแหน่งของผู้ใช้
+    const route = userLat && userLng
+      ? orderRouteFromUser(selectedTripPlaces, userLat, userLng)
+      : [...selectedTripPlaces].sort((a, b) => (a.distance_km || 0) - (b.distance_km || 0));
     setFinalRoutePlan(route);
     setCurrentScreen('final-route');
 
@@ -707,6 +723,8 @@ function App() {
           finalRoutePlan={finalRoutePlan}
           userLat={userLat}
           userLng={userLng}
+          gpsStatus={gpsStatus}
+          onRequestLocation={getLocation}
           calculateEstimatedTime={calculateEstimatedTime}
           onViewDetail={handleViewDetail}
           onOpenVR={openVRMode}

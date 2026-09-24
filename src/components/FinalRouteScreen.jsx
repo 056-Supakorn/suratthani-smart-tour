@@ -9,6 +9,8 @@ export default function FinalRouteScreen({
   finalRoutePlan,
   userLat,
   userLng,
+  gpsStatus,
+  onRequestLocation,
   calculateEstimatedTime,
   onViewDetail,
   onOpenVR,
@@ -18,7 +20,8 @@ export default function FinalRouteScreen({
   toggleTheme,
 }) {
   const round = (val, dec = 1) => Number(Math.round(val + 'e' + dec) + 'e-' + dec);
-  const googleMapsUrl = buildGoogleMapsRouteUrl(finalRoutePlan);
+  const googleMapsUrl = buildGoogleMapsRouteUrl(finalRoutePlan, userLat, userLng);
+  const hasUserLocation = !!(userLat && userLng);
 
   return (
     <div className="home-root-wrapper fade-in">
@@ -75,6 +78,18 @@ export default function FinalRouteScreen({
           <Suspense fallback={<div className="route-map-container route-map-loading">⏳ กำลังโหลดแผนที่...</div>}>
             <RouteMap places={finalRoutePlan} userLat={userLat} userLng={userLng} />
           </Suspense>
+          {!hasUserLocation && (
+            <div className="route-map-location-notice">
+              <span>
+                {gpsStatus && gpsStatus.includes('❌')
+                  ? '❌ ยังไม่ได้รับตำแหน่งของคุณ กรุณาอนุญาตการเข้าถึงตำแหน่ง (Location) แล้วกด "ใช้ตำแหน่งของฉัน" เพื่อให้เส้นทางเริ่มจากจุดที่คุณอยู่'
+                  : '📍 กำลังขอตำแหน่งของคุณ เพื่อให้เส้นทางเริ่มจากจุดที่คุณอยู่...'}
+              </span>
+              <button type="button" className="route-map-location-btn" onClick={onRequestLocation}>
+                ใช้ตำแหน่งของฉัน
+              </button>
+            </div>
+          )}
           <div className="route-map-footer">
             <p className="route-map-note">เส้นประเป็นเส้นตรงระหว่างจุด ใช้ปุ่มนำทางเพื่อดูเส้นทางถนนจริง</p>
             {googleMapsUrl && (

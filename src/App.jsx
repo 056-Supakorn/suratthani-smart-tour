@@ -34,6 +34,20 @@ const moodOptions = [
   { id: 'social', label: '📸 สายคาเฟ่ / ถ่ายรูป' }
 ];
 
+// ข้อความของตัวแสดงภาพ VR (Pannellum) เป็นภาษาไทย แทนข้อความ error ภาษาอังกฤษ
+const VR_VIEWER_STRINGS_TH = {
+  loadButtonLabel: 'แตะเพื่อ<br>โหลดภาพ VR 360°',
+  loadingLabel: 'กำลังโหลด...',
+  bylineLabel: 'โดย %s',
+  noPanoramaError: 'ขออภัย ยังไม่มีภาพ VR ของสถานที่นี้ในขณะนี้',
+  fileAccessError: 'ขออภัย ยังไม่มีภาพ VR ของสถานที่นี้ในขณะนี้',
+  malformedURLError: 'ขออภัย ลิงก์ภาพ VR ของสถานที่นี้ไม่ถูกต้อง',
+  iOS8WebGLError: 'อุปกรณ์นี้ไม่รองรับการแสดงภาพ VR 360°',
+  genericWebGLError: 'เบราว์เซอร์นี้ไม่รองรับการแสดงภาพ VR 360° กรุณาลองเปิดด้วย Chrome หรือ Safari เวอร์ชันล่าสุด',
+  textureSizeError: 'ภาพ VR นี้ใหญ่เกินกว่าที่อุปกรณ์นี้รองรับ กรุณาลองเปิดจากอุปกรณ์อื่น',
+  unknownError: 'เกิดข้อผิดพลาดในการแสดงภาพ VR กรุณาลองใหม่อีกครั้ง',
+};
+
 // หน้าที่ต้องเข้าสู่ระบบก่อน และหน้าที่ต้องมีข้อมูลประกอบ (ใช้ตรวจตอนกู้คืนหน้าหลังรีเฟรช)
 const LOGGED_OUT_SCREENS = ['login', 'register'];
 const TOURIST_SCREENS = ['onboarding', 'home', 'search-results', 'ai-input', 'ai-result', 'final-route', 'detail'];
@@ -120,6 +134,8 @@ function App() {
   
   const [vrMode, setVrMode] = useState(false);
   const [currentVrPlace, setCurrentVrPlace] = useState(null);
+  const [vrPreparing, setVrPreparing] = useState(false);
+  const [vrMissing, setVrMissing] = useState(false);
 
   useEffect(() => {
     document.body.style.backgroundColor = theme === 'dark' ? '#121212' : '#f4f6f8';
@@ -127,15 +143,38 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
-    if (vrMode && currentVrPlace && window.pannellum) {
-      const viewer = window.pannellum.viewer('panorama-container', {
+    if (!vrMode || !currentVrPlace || !window.pannellum) return;
+    let viewer = null;
+    let cancelled = false;
+    const startViewer = () => {
+      if (cancelled) return;
+      setVrPreparing(false);
+      viewer = window.pannellum.viewer('panorama-container', {
         type: 'equirectangular',
         panorama: currentVrPlace.vr_image,
         autoLoad: true,
         autoRotate: -2,
+        strings: VR_VIEWER_STRINGS_TH,
       });
-      return () => { try { viewer.destroy(); } catch (e) {} };
-    }
+    };
+    // Check the image loads before starting the viewer: a missing file would otherwise
+    // leave the viewer stuck on "loading" (the host answers with the app page, not a 404).
+    setVrPreparing(true);
+    setVrMissing(false);
+    const probe = new Image();
+    probe.crossOrigin = 'anonymous';
+    probe.onload = startViewer;
+    probe.onerror = () => {
+      if (cancelled) return;
+      setVrPreparing(false);
+      setVrMissing(true);
+    };
+    probe.src = currentVrPlace.vr_image;
+    return () => {
+      cancelled = true;
+      probe.onload = probe.onerror = null;
+      try { if (viewer) viewer.destroy(); } catch (e) {}
+    };
   }, [vrMode, currentVrPlace]);
 
   // search-results / ai-result ก็ใช้ homePlaces ด้วย จึงต้องโหลดให้ถ้าผู้ใช้รีเฟรชอยู่ที่หน้านั้น
@@ -705,6 +744,8 @@ function App() {
           </div>
           <div className="vr-viewer-body">
             <div id="panorama-container"></div>
+            {vrPreparing && <p className="vr-viewer-preparing">⏳ กำลังโหลดภาพ VR 360°...</p>}
+            {vrMissing && <p className="vr-viewer-preparing">{VR_VIEWER_STRINGS_TH.fileAccessError}</p>}
           </div>
         </div>
       )}

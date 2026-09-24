@@ -4142,3 +4142,119 @@
 .login-text-input::-ms-clear {
   display: none;
 }
+
+/* แผนที่เส้นทางในหน้าแผนการเดินทางจุดต่อจุด */
+.route-map-section {
+  margin-bottom: 24px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.dark-theme .route-map-section {
+  border-color: #2d3748;
+  background: #1a202c;
+}
+
+.route-map-container {
+  width: 100%;
+  height: 360px;
+  z-index: 0;
+}
+
+.route-map-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+}
+
+.route-map-note {
+  margin: 0;
+  font-size: 12.5px;
+  color: #64748b;
+  flex: 1 1 220px;
+}
+
+.dark-theme .route-map-note {
+  color: #94a3b8;
+}
+
+.route-map-google-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: #123e2f;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.route-map-google-btn:hover {
+  background: #1b5e45;
+}
+
+.dark-theme .route-map-google-btn {
+  background: #059669;
+}
+
+.route-map-pin {
+  width: 32px;
+  height: 32px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: #123e2f;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.route-map-pin span {
+  transform: rotate(45deg);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 14px;
+  font-family: 'Prompt', sans-serif;
+}
+
+.route-map-user-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #2563eb;
+  border: 3px solid #ffffff;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25);
+  box-sizing: border-box;
+}
+
+.route-map-section .leaflet-popup-content {
+  font-family: 'Prompt', sans-serif;
+  font-size: 13px;
+}
+
+@media (max-width: 520px) {
+  .route-map-container {
+    height: 280px;
+  }
+
+  .route-map-google-btn {
+    width: 100%;
+  }
+}
+
+.route-map-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 14px;
+}

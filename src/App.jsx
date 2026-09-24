@@ -705,6 +705,8 @@ function App() {
       {currentScreen === 'final-route' && (
         <FinalRouteScreen
           finalRoutePlan={finalRoutePlan}
+          userLat={userLat}
+          userLng={userLng}
           calculateEstimatedTime={calculateEstimatedTime}
           onViewDetail={handleViewDetail}
           onOpenVR={openVRMode}

@@ -1,8 +1,14 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import ThemeToggleBtn from './ThemeToggleBtn';
+import { buildGoogleMapsRouteUrl } from './googleMapsRoute';
+
+// โหลดแผนที่ (Leaflet) เฉพาะตอนเปิดหน้านี้ ไม่ให้หน้าอื่นโหลดช้าลง
+const RouteMap = lazy(() => import('./RouteMap'));
 
 export default function FinalRouteScreen({
   finalRoutePlan,
+  userLat,
+  userLng,
   calculateEstimatedTime,
   onViewDetail,
   onOpenVR,
@@ -12,6 +18,7 @@ export default function FinalRouteScreen({
   toggleTheme,
 }) {
   const round = (val, dec = 1) => Number(Math.round(val + 'e' + dec) + 'e-' + dec);
+  const googleMapsUrl = buildGoogleMapsRouteUrl(finalRoutePlan);
 
   return (
     <div className="home-root-wrapper fade-in">
@@ -60,6 +67,21 @@ export default function FinalRouteScreen({
                 ระบบได้จัดเรียงลำดับการแวะชมสถานที่ตามระยะทางที่ใกล้และสะดวกที่สุดเรียบร้อยแล้ว
               </p>
             </div>
+          </div>
+        </section>
+
+        {/* Route Map: numbered pins in visiting order + Google Maps navigation */}
+        <section className="route-map-section">
+          <Suspense fallback={<div className="route-map-container route-map-loading">⏳ กำลังโหลดแผนที่...</div>}>
+            <RouteMap places={finalRoutePlan} userLat={userLat} userLng={userLng} />
+          </Suspense>
+          <div className="route-map-footer">
+            <p className="route-map-note">เส้นประเป็นเส้นตรงระหว่างจุด ใช้ปุ่มนำทางเพื่อดูเส้นทางถนนจริง</p>
+            {googleMapsUrl && (
+              <a className="route-map-google-btn" href={googleMapsUrl} target="_blank" rel="noopener noreferrer">
+                🧭 นำทางด้วย Google Maps
+              </a>
+            )}
           </div>
         </section>
 

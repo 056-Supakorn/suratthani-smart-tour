@@ -4084,3 +4084,61 @@
 
 
 
+
+/* ปุ่มแสดง/ซ่อนรหัสผ่าน (รูปตา) ในช่องรหัสผ่าน */
+.password-toggle-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.password-toggle-btn:hover,
+.password-toggle-btn:focus-visible {
+  color: #475569;
+  background: rgba(148, 163, 184, 0.15);
+}
+
+.dark-theme .password-toggle-btn:hover,
+.dark-theme .password-toggle-btn:focus-visible {
+  color: #e2e8f0;
+}
+
+.password-match-hint {
+  margin: 6px 0 0 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.password-match-hint.match {
+  color: #16a34a;
+}
+
+.password-match-hint.mismatch {
+  color: #dc2626;
+}
+
+.dark-theme .password-match-hint.match {
+  color: #4ade80;
+}
+
+.dark-theme .password-match-hint.mismatch {
+  color: #f87171;
+}
+
+/* ซ่อนปุ่มรูปตาในตัวของ Edge ไม่ให้ซ้อนกับปุ่มของเรา */
+.login-text-input::-ms-reveal,
+.login-text-input::-ms-clear {
+  display: none;
+}

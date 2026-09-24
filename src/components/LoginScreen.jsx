@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../apiConfig';
+import PasswordInput, { PasswordMatchHint } from './PasswordInput';
 
 // Forgot password: request a 6-digit code by email, then set a new password with it.
 function ForgotPasswordForm({ initialEmail, onDone, onCancel }) {
@@ -132,8 +133,7 @@ function ForgotPasswordForm({ initialEmail, onDone, onCancel }) {
           <div className="login-form-group">
             <label className="login-field-label"><span>รหัสผ่านใหม่</span></label>
             <div className="login-input-box-wrapper">
-              <input
-                type="password"
+              <PasswordInput
                 autoComplete="new-password"
                 placeholder="อย่างน้อย 6 ตัวอักษร"
                 value={newPassword}
@@ -146,8 +146,7 @@ function ForgotPasswordForm({ initialEmail, onDone, onCancel }) {
           <div className="login-form-group">
             <label className="login-field-label"><span>ยืนยันรหัสผ่านใหม่</span></label>
             <div className="login-input-box-wrapper">
-              <input
-                type="password"
+              <PasswordInput
                 autoComplete="new-password"
                 placeholder="กรอกรหัสผ่านใหม่อีกครั้ง"
                 value={confirmPassword}
@@ -156,6 +155,7 @@ function ForgotPasswordForm({ initialEmail, onDone, onCancel }) {
                 required
               />
             </div>
+            <PasswordMatchHint password={newPassword} confirmPassword={confirmPassword} />
           </div>
           {error && <p className="forgot-error-text">{error}</p>}
           <button type="submit" className="login-primary-submit-btn" disabled={isBusy}>
@@ -356,8 +356,7 @@ export default function LoginScreen({
                 <span>รหัสผ่าน</span>
               </label>
               <div className="login-input-box-wrapper">
-                <input
-                  type="password"
+                <PasswordInput
                   placeholder="รหัสผ่านของคุณ"
                   value={inputPassword}
                   onChange={(e) => setInputPassword(e.target.value)}

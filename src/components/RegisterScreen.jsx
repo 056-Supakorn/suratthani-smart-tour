@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { API_BASE_URL, setAuthToken } from '../apiConfig';
+import PasswordInput, { PasswordMatchHint } from './PasswordInput';
 
 export default function RegisterScreen({
   theme,
@@ -288,8 +289,7 @@ export default function RegisterScreen({
                   <span>รหัสผ่าน</span>
                 </label>
                 <div className="login-input-box-wrapper">
-                  <input
-                    type="password"
+                  <PasswordInput
                     placeholder="อย่างน้อย 6 ตัวอักษร"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -308,8 +308,7 @@ export default function RegisterScreen({
                   <span>ยืนยันรหัสผ่าน</span>
                 </label>
                 <div className="login-input-box-wrapper">
-                  <input
-                    type="password"
+                  <PasswordInput
                     placeholder="กรอกรหัสผ่านอีกครั้ง"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
@@ -317,6 +316,7 @@ export default function RegisterScreen({
                     required
                   />
                 </div>
+                <PasswordMatchHint password={password} confirmPassword={confirmPassword} />
               </div>
             </div>
 

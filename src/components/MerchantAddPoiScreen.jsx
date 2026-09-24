@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../apiConfig';
 import ThemeToggleBtn from './ThemeToggleBtn';
+import ImagePreview, { cleanImageUrl } from './ImagePreview';
 
 export default function MerchantAddPoiScreen({
   theme,
@@ -584,7 +585,7 @@ export default function MerchantAddPoiScreen({
                       key="image-url-input"
                       type="url"
                       value={imageUrl}
-                      onChange={(e) => setImageUrl(e.target.value)}
+                      onChange={(e) => setImageUrl(cleanImageUrl(e.target.value))}
                       placeholder="https://... (เว้นว่างไว้จะใช้ภาพอัตโนมัติ)"
                       className="merchant-text-input"
                     />
@@ -599,9 +600,7 @@ export default function MerchantAddPoiScreen({
                     />
                   )}
                   {isUploadingImage && <p className="upload-status-hint">⏳ กำลังอัปโหลด...</p>}
-                  {imageUrl && (
-                    <img src={imageUrl} alt="ตัวอย่างรูปภาพหน้าร้าน" className="image-preview-thumb" />
-                  )}
+                  <ImagePreview src={imageUrl} alt="ตัวอย่างรูปภาพหน้าร้าน" />
                 </div>
 
                 <div className="form-field-group">
@@ -859,20 +858,13 @@ export default function MerchantAddPoiScreen({
                       key="vr-asset-url-input"
                       type="url"
                       value={vrAssetImageUrl}
-                      onChange={(e) => setVrAssetImageUrl(e.target.value)}
+                      onChange={(e) => setVrAssetImageUrl(cleanImageUrl(e.target.value))}
                       placeholder="https://..."
                       className="merchant-text-input"
                     />
                   )}
                   {isUploadingVrAsset && <p className="upload-status-hint">⏳ กำลังอัปโหลด...</p>}
-                  {vrAssetImageUrl && (
-                    <img
-                      src={vrAssetImageUrl}
-                      alt="ตัวอย่างภาพ VR"
-                      className="image-preview-thumb"
-                      style={{ marginTop: '12px' }}
-                    />
-                  )}
+                  <ImagePreview src={vrAssetImageUrl} alt="ตัวอย่างภาพ VR" style={{ marginTop: '12px' }} />
                 </div>
 
                 <div className="form-action-footer" style={{ marginTop: '20px', gap: '10px' }}>

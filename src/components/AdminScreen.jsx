@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE_URL, getAdminHeaders } from '../apiConfig';
 import ThemeToggleBtn from './ThemeToggleBtn';
+import ImagePreview, { cleanImageUrl } from './ImagePreview';
 
 export default function AdminScreen({
   theme,
@@ -725,7 +726,7 @@ export default function AdminScreen({
                     <input
                       type="text"
                       value={poiForm.image}
-                      onChange={(e) => setPoiForm({ ...poiForm, image: e.target.value })}
+                      onChange={(e) => setPoiForm({ ...poiForm, image: cleanImageUrl(e.target.value) })}
                       placeholder="https://..."
                       className="merchant-text-input"
                     />
@@ -738,16 +739,14 @@ export default function AdminScreen({
                       style={{ marginTop: '6px' }}
                     />
                     {uploadingPoiField === 'image' && <p className="upload-status-hint">⏳ กำลังอัปโหลด...</p>}
-                    {poiForm.image && (
-                      <img src={poiForm.image} alt="ตัวอย่างรูปภาพ" className="image-preview-thumb" />
-                    )}
+                    <ImagePreview src={poiForm.image} alt="ตัวอย่างรูปภาพ" />
                   </div>
                   <div className="form-field-group">
                     <label className="form-input-label">URL ภาพ VR 360°</label>
                     <input
                       type="text"
                       value={poiForm.vr_image}
-                      onChange={(e) => setPoiForm({ ...poiForm, vr_image: e.target.value })}
+                      onChange={(e) => setPoiForm({ ...poiForm, vr_image: cleanImageUrl(e.target.value) })}
                       placeholder="/vr_images/... หรือ https://..."
                       className="merchant-text-input"
                     />
@@ -760,9 +759,7 @@ export default function AdminScreen({
                       style={{ marginTop: '6px' }}
                     />
                     {uploadingPoiField === 'vr_image' && <p className="upload-status-hint">⏳ กำลังอัปโหลด...</p>}
-                    {poiForm.vr_image && (
-                      <img src={poiForm.vr_image} alt="ตัวอย่างภาพ VR" className="image-preview-thumb" />
-                    )}
+                    <ImagePreview src={poiForm.vr_image} alt="ตัวอย่างภาพ VR" />
                   </div>
                 </div>
 
@@ -783,9 +780,9 @@ export default function AdminScreen({
               <div className="admin-places-quick-list">
                 {places.map((place, index) => (
                   <div key={place.id} className="place-item-card" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div className="place-item-row">
                       <span className="place-num">{String(index + 1).padStart(2, '0')}</span>
-                      <div style={{ flex: 1 }}>
+                      <div className="place-item-info">
                         <h4 className="place-item-title">
                           {place.name}{' '}
                           {place.ownerEmail && (
@@ -798,32 +795,34 @@ export default function AdminScreen({
                           {place.location || '-'} • หมวดหมู่: {place.tag || '-'} • พิกัด: {place.lat}, {place.lng}
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        className="btn-recheck-action"
-                        onClick={() => setExpandedPlaceId(expandedPlaceId === place.id ? null : place.id)}
-                      >
-                        {expandedPlaceId === place.id ? '🔼 ซ่อน' : '🔽 ดูรายละเอียด'}
-                      </button>
-                      {place.ownerEmail ? (
-                        <span className="upload-status-hint" title="แก้ไขสถานที่ของผู้ประกอบการได้ที่แท็บ Moderation">
-                          จัดการที่แท็บ Moderation
-                        </span>
-                      ) : (
-                        <button type="button" className="btn-approve-action" onClick={() => openEditPlaceForm(place)}>
-                          ✏️ แก้ไข
+                      <div className="place-item-actions">
+                        <button
+                          type="button"
+                          className="btn-recheck-action"
+                          onClick={() => setExpandedPlaceId(expandedPlaceId === place.id ? null : place.id)}
+                        >
+                          {expandedPlaceId === place.id ? '🔼 ซ่อน' : '🔽 ดูรายละเอียด'}
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        className="btn-reject-action"
-                        onClick={() =>
-                          place.ownerEmail ? handleDeleteMerchantPlace(place) : handleDeletePlace(place)
-                        }
-                        title="ลบสถานที่นี้ออกจากระบบถาวร"
-                      >
-                        🗑️ ลบ
-                      </button>
+                        {place.ownerEmail ? (
+                          <span className="upload-status-hint" title="แก้ไขสถานที่ของผู้ประกอบการได้ที่แท็บ Moderation">
+                            จัดการที่แท็บ Moderation
+                          </span>
+                        ) : (
+                          <button type="button" className="btn-approve-action" onClick={() => openEditPlaceForm(place)}>
+                            ✏️ แก้ไข
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="btn-reject-action"
+                          onClick={() =>
+                            place.ownerEmail ? handleDeleteMerchantPlace(place) : handleDeletePlace(place)
+                          }
+                          title="ลบสถานที่นี้ออกจากระบบถาวร"
+                        >
+                          🗑️ ลบ
+                        </button>
+                      </div>
                     </div>
                     {expandedPlaceId === place.id && (
                       <div className="my-place-card-details" style={{ marginTop: '12px' }}>

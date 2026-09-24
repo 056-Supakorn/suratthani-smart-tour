@@ -1503,6 +1503,10 @@
   color: #94a3b8;
 }
 
+.upload-status-hint.image-preview-error {
+  color: #dc2626;
+}
+
 .image-preview-thumb {
   display: block;
   margin-top: 10px;
@@ -3933,6 +3937,35 @@
   border: 1px solid #273140;
 }
 
+.admin-places-quick-list > .place-item-card {
+  min-width: 0;
+}
+
+.place-item-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.place-item-info {
+  flex: 1 1 160px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.place-item-title .business-type-tag {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.place-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
 .place-num {
   font-size: 18px;
   font-weight: 800;
@@ -4020,6 +4053,10 @@
 @media (max-width: 640px) {
   .admin-stats-grid {
     grid-template-columns: 1fr;
+  }
+
+  .place-item-actions {
+    flex-basis: 100%;
   }
 
   .admin-header-bar {

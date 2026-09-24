@@ -17,3 +17,16 @@ export function buildGoogleMapsRouteUrl(places, userLat, userLng) {
   params.set('travelmode', 'driving');
   return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
+
+// ลิงก์นำทางทีละช่วง: จากจุดก่อนหน้า (หรือตำแหน่งผู้ใช้สำหรับจุดแรก) ไปจุดนี้
+// ไม่บังคับโหมดรถยนต์ ให้ Google Maps เลือกเอง ผู้ใช้สลับเป็นรถ/ขนส่งสาธารณะ/เดินได้
+// (บางจุด เช่น เกาะ ขับรถไปไม่ได้ ถ้าบังคับขับรถ Google Maps จะไม่แสดงเส้นทางเลย)
+export function buildGoogleMapsLegUrl(fromLat, fromLng, place) {
+  const destination = toPoint(place.lat, place.lng);
+  if (!destination) return null;
+  const params = new URLSearchParams({ api: '1' });
+  const origin = toPoint(fromLat, fromLng);
+  if (origin) params.set('origin', `${origin[0]},${origin[1]}`);
+  params.set('destination', `${destination[0]},${destination[1]}`);
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}

@@ -1,6 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import ThemeToggleBtn from './ThemeToggleBtn';
-import { buildGoogleMapsRouteUrl } from './googleMapsRoute';
+import { buildGoogleMapsRouteUrl, buildGoogleMapsLegUrl } from './googleMapsRoute';
 
 // โหลดแผนที่ (Leaflet) เฉพาะตอนเปิดหน้านี้ ไม่ให้หน้าอื่นโหลดช้าลง
 const RouteMap = lazy(() => import('./RouteMap'));
@@ -91,7 +91,7 @@ export default function FinalRouteScreen({
             </div>
           )}
           <div className="route-map-footer">
-            <p className="route-map-note">เส้นประเป็นเส้นตรงระหว่างจุด ใช้ปุ่มนำทางเพื่อดูเส้นทางถนนจริง</p>
+            <p className="route-map-note">เส้นประเป็นเส้นตรงระหว่างจุด ถ้าเส้นทางรวมไม่ขึ้นใน Google Maps (เช่น มีจุดที่ต้องนั่งเรือ) ให้ใช้ปุ่มนำทางทีละช่วงในแต่ละการ์ดด้านล่าง</p>
             {googleMapsUrl && (
               <a className="route-map-google-btn" href={googleMapsUrl} target="_blank" rel="noopener noreferrer">
                 🧭 นำทางด้วย Google Maps
@@ -102,7 +102,13 @@ export default function FinalRouteScreen({
 
         {/* Timeline Itinerary Items */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', marginBottom: '30px' }}>
-          {finalRoutePlan.map((place, index) => (
+          {finalRoutePlan.map((place, index) => {
+            // จุดแรกเริ่มจากตำแหน่งผู้ใช้ จุดถัดไปเริ่มจากจุดก่อนหน้า
+            const prevPlace = index > 0 ? finalRoutePlan[index - 1] : null;
+            const legUrl = prevPlace
+              ? buildGoogleMapsLegUrl(prevPlace.lat, prevPlace.lng, place)
+              : buildGoogleMapsLegUrl(userLat, userLng, place);
+            return (
             <div
               key={place.id || index}
               className="surat-attraction-card final-route-card"
@@ -169,15 +175,15 @@ export default function FinalRouteScreen({
                 )}
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'flex-end' }}>
-                  {buildGoogleMapsRouteUrl([place], userLat, userLng) && (
+                  {legUrl && (
                     <a
                       className="card-navigate-pill-btn"
-                      href={buildGoogleMapsRouteUrl([place], userLat, userLng)}
+                      href={legUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      🧭 นำทางไปจุดนี้
+                      🧭 {prevPlace ? `นำทางจุดที่ ${index} → ${index + 1}` : 'นำทางไปจุดที่ 1'}
                     </a>
                   )}
                   {place.vr_image && (
@@ -205,7 +211,8 @@ export default function FinalRouteScreen({
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Action Buttons */}

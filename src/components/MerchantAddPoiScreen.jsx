@@ -478,6 +478,15 @@ export default function MerchantAddPoiScreen({
                     <option value="อำเภอไชยา">อำเภอไชยา</option>
                     <option value="อำเภอบ้านนาสาร">อำเภอบ้านนาสาร</option>
                     <option value="อำเภอคีรีรัฐนิคม">อำเภอคีรีรัฐนิคม</option>
+                    <option value="อำเภอกาญจนดิษฐ์">อำเภอกาญจนดิษฐ์</option>
+                    <option value="อำเภอท่าชนะ">อำเภอท่าชนะ</option>
+                    <option value="อำเภอท่าฉาง">อำเภอท่าฉาง</option>
+                    <option value="อำเภอบ้านนาเดิม">อำเภอบ้านนาเดิม</option>
+                    <option value="อำเภอเคียนซา">อำเภอเคียนซา</option>
+                    <option value="อำเภอเวียงสระ">อำเภอเวียงสระ</option>
+                    <option value="อำเภอพระแสง">อำเภอพระแสง</option>
+                    <option value="อำเภอชัยบุรี">อำเภอชัยบุรี</option>
+                    <option value="อำเภอวิภาวดี">อำเภอวิภาวดี</option>
                   </select>
                 </div>
 

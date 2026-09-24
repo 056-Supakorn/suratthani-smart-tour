@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import ThemeToggleBtn from './ThemeToggleBtn';
 import { buildGoogleMapsRouteUrl, buildGoogleMapsLegUrl } from './googleMapsRoute';
+import { planTripLeg, roadReachablePoint } from './islandRoutes';
 
 // โหลดแผนที่ (Leaflet) เฉพาะตอนเปิดหน้านี้ ไม่ให้หน้าอื่นโหลดช้าลง
 const RouteMap = lazy(() => import('./RouteMap'));
@@ -20,7 +21,7 @@ export default function FinalRouteScreen({
   toggleTheme,
 }) {
   const round = (val, dec = 1) => Number(Math.round(val + 'e' + dec) + 'e-' + dec);
-  const googleMapsUrl = buildGoogleMapsRouteUrl(finalRoutePlan, userLat, userLng);
+  const googleMapsUrl = buildGoogleMapsRouteUrl(finalRoutePlan.map(roadReachablePoint), userLat, userLng);
   const hasUserLocation = !!(userLat && userLng);
 
   return (
@@ -105,9 +106,11 @@ export default function FinalRouteScreen({
           {finalRoutePlan.map((place, index) => {
             // จุดแรกเริ่มจากตำแหน่งผู้ใช้ จุดถัดไปเริ่มจากจุดก่อนหน้า
             const prevPlace = index > 0 ? finalRoutePlan[index - 1] : null;
-            const legUrl = prevPlace
-              ? buildGoogleMapsLegUrl(prevPlace.lat, prevPlace.lng, place)
-              : buildGoogleMapsLegUrl(userLat, userLng, place);
+            const legFrom = prevPlace || { name: 'ตำแหน่งของคุณ', lat: userLat, lng: userLng };
+            // ไปเกาะ/สถานที่ที่ต้องนั่งเรือ จะแบ่งเป็นขั้นตอน: ขับไปท่าเรือ -> นั่งเรือ -> ขับจากท่าเรือบนเกาะ
+            const legSteps = planTripLeg(legFrom, place);
+            const isSingleDrive = legSteps.length === 1 && legSteps[0].type === 'drive';
+            const legUrl = isSingleDrive ? buildGoogleMapsLegUrl(legFrom.lat, legFrom.lng, place) : null;
             return (
             <div
               key={place.id || index}
@@ -171,6 +174,32 @@ export default function FinalRouteScreen({
                     <span style={{ fontWeight: 600, fontSize: '13px' }} className="brand-title">
                       ⏱️ {calculateEstimatedTime(place.route_distance)}
                     </span>
+                  </div>
+                )}
+
+                {!isSingleDrive && legSteps.length > 0 && (
+                  <div className="trip-leg-steps" onClick={(e) => e.stopPropagation()}>
+                    <p className="trip-leg-steps-title">
+                      🚢 {prevPlace ? `เดินทางจากจุดที่ ${index} ไปจุดที่ ${index + 1}` : 'เดินทางไปจุดที่ 1'} ต้องนั่งเรือ ทำตามขั้นตอนนี้:
+                    </p>
+                    <ol className="trip-leg-steps-list">
+                      {legSteps.map((step, stepIndex) => (
+                        <li key={stepIndex} className={`trip-leg-step ${step.type}`}>
+                          {step.type === 'drive' ? (
+                            <a
+                              className="card-navigate-pill-btn"
+                              href={buildGoogleMapsLegUrl(step.from.lat, step.from.lng, step.to)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              🧭 นำทางไป{step.to === place ? place.name : step.to.name}
+                            </a>
+                          ) : (
+                            <span>🚢 {step.text}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
                   </div>
                 )}
 

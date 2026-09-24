@@ -169,6 +169,17 @@ export default function FinalRouteScreen({
                 )}
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'flex-end' }}>
+                  {buildGoogleMapsRouteUrl([place], userLat, userLng) && (
+                    <a
+                      className="card-navigate-pill-btn"
+                      href={buildGoogleMapsRouteUrl([place], userLat, userLng)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      🧭 นำทางไปจุดนี้
+                    </a>
+                  )}
                   {place.vr_image && (
                     <button
                       type="button"

@@ -843,8 +843,8 @@ export default function AdminScreen({
 
         {/* ================= TAB 3: VR ASSETS ================= */}
         {activeTab === 'vr-assets' && (() => {
-          const approvedMerchants = merchants.filter((m) => m.status === 'approved');
-          const vrEnabledPlaces = [...places, ...approvedMerchants]
+          // /admin/places already includes approved merchant places - don't add them again
+          const vrEnabledPlaces = places
             .filter((p) => p.vr_image)
             .sort((a, b) => (b.vrViews || 0) - (a.vrViews || 0));
           const totalVrViews = vrEnabledPlaces.reduce((sum, p) => sum + (p.vrViews || 0), 0);
@@ -952,8 +952,8 @@ export default function AdminScreen({
 
         {/* ================= TAB 5: DASHBOARD & AI ================= */}
         {activeTab === 'dashboard' && (() => {
-          const approvedMerchants = merchants.filter((m) => m.status === 'approved');
-          const allPlaces = [...places, ...approvedMerchants];
+          // /admin/places already includes approved merchant places - don't add them again
+          const allPlaces = places;
           const categoryMeta = {
             'ทะเล': { emoji: '🌊', color: '#0ea5e9' },
             'ธรรมชาติ': { emoji: '⛰️', color: '#059669' },

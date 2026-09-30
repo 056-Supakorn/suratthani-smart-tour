@@ -164,6 +164,8 @@ REVERSE_CATEGORY_MAP = {v: k for k, v in CATEGORY_MAP.items()}
 # 🧠 3. ระบบ AI Machine Learning
 # ==========================================
 DATASET_FILE = 'dataset.csv'
+# คำตอบแบบสอบถามจริงที่แปลงแล้วด้วย convert_survey.py - นำเข้า MongoDB ครั้งเดียว (ติดป้าย source=survey)
+SURVEY_DATASET_FILE = 'survey_dataset.csv'
 ai_model = RandomForestClassifier(n_estimators=100, random_state=42)
 le_mood, le_category, le_place = LabelEncoder(), LabelEncoder(), LabelEncoder()
 is_ai_ready = False
@@ -184,6 +186,16 @@ def train_ai():
             print("✅ ย้ายข้อมูล Dataset AI เรียบร้อยแล้ว!")
         except Exception as e:
             print(f"❌ ไม่สามารถอ่านไฟล์ Dataset ได้: {e}")
+
+    if os.path.exists(SURVEY_DATASET_FILE) and dataset_collection.count_documents({"source": "survey"}) == 0:
+        try:
+            survey_rows = pd.read_csv(SURVEY_DATASET_FILE).to_dict('records')
+            for row in survey_rows:
+                row["source"] = "survey"
+            dataset_collection.insert_many(survey_rows)
+            print(f"✅ นำเข้าข้อมูลแบบสอบถาม {len(survey_rows)} แถวเข้า MongoDB แล้ว")
+        except Exception as e:
+            print(f"❌ ไม่สามารถนำเข้าข้อมูลแบบสอบถามได้: {e}")
 
     data_from_db = list(dataset_collection.find({}, {"_id": 0}))
     if len(data_from_db) >= 5:

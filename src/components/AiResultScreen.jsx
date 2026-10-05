@@ -3,6 +3,7 @@ import ThemeToggleBtn from './ThemeToggleBtn';
 
 export default function AiResultScreen({
   aiRoute,
+  aiAlternatives = [],
   homePlaces,
   selectedTripPlaces,
   togglePlaceSelection,
@@ -62,8 +63,18 @@ export default function AiResultScreen({
     return [tag, sorted];
   });
 
+  // สถานที่แนะนำเพิ่มเติม (นอกแผนหลัก) จัดกลุ่มตามหมวด เรียงตามลำดับที่ AI ส่งมา
+  const alternativesByTag = Object.entries(
+    aiAlternatives.reduce((acc, place) => {
+      const tag = place.tag || 'ทั่วไป';
+      if (!acc[tag]) acc[tag] = [];
+      acc[tag].push(place);
+      return acc;
+    }, {})
+  );
+
   // ค้นหาสถานที่อื่นเพิ่มเติมเผื่อ AI ไม่ได้แนะนำที่ที่ผู้ใช้อยากไป
-  const aiRouteIds = new Set(aiRoute.map((p) => p.id));
+  const aiRouteIds = new Set([...aiRoute, ...aiAlternatives].map((p) => p.id));
   const trimmedQuery = manualQuery.trim().toLowerCase();
   const manualSearchResults = trimmedQuery
     ? (homePlaces || [])
@@ -307,6 +318,29 @@ export default function AiResultScreen({
             <h3>ไม่พบสถานที่ที่ตรงกับเงื่อนไข</h3>
             <p>ลองปรับเพิ่มงบประมาณ หรือเพิ่มเวลาที่มีในการท่องเที่ยวครับ</p>
           </div>
+        )}
+
+        {/* สถานที่แนะนำเพิ่มเติม: ไม่อยู่ในแผนหลัก ผู้ใช้กดเพิ่มลงทริปเองได้ */}
+        {alternativesByTag.length > 0 && (
+          <section style={{ marginBottom: '36px' }}>
+            <div className="section-title-wrapper" style={{ textAlign: 'left', marginBottom: '16px' }}>
+              <h3 className="section-main-title" style={{ fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>✨ สถานที่แนะนำเพิ่มเติม</span>
+                <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>({aiAlternatives.length} แห่ง)</span>
+              </h3>
+              <p style={{ fontSize: '13px', color: '#64748b', margin: '6px 0 0' }}>
+                สถานที่อื่นในหมวดที่คุณเลือก เรียงตามความเหมาะสม ไม่ได้รวมอยู่ในงบประมาณและเวลาของแผนด้านบน กด "➕ เพิ่มลงทริป" ได้ตามต้องการ
+              </p>
+            </div>
+            {alternativesByTag.map(([tag, places]) => (
+              <div key={tag} style={{ marginBottom: '24px' }}>
+                <h4 style={{ fontSize: '15px', margin: '0 0 12px', color: '#059669' }}>🏷️ {tag}</h4>
+                <div className="attraction-cards-grid-3col">
+                  {places.map((place) => renderPlaceCard(place, tag))}
+                </div>
+              </div>
+            ))}
+          </section>
         )}
       </main>
 

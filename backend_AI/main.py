@@ -234,7 +234,10 @@ AVG_TRAVEL_SPEED_KMH = 40.0  # ความเร็วเฉลี่ยโด�
 # ถ้าสถานที่ที่ใกล้ที่สุดยังไกลเกินนี้ ถือว่าผู้ใช้อยู่นอกจังหวัด (จังหวัดกว้างราว 150-200 กม.)
 FAR_FROM_PROVINCE_KM = 150.0
 # สัดส่วนเวลาทริปที่ยอมให้ใช้เดินทางไปยังสถานที่ที่ AI แนะนำ (กำหนดรัศมีที่ใช้คะแนน AI จัดลำดับ)
-PREFERRED_TRAVEL_SHARE = 0.25
+# 1/6 (10 ชม. = รัศมีราว 67 กม.) - เดิม 1/4 ทำให้ AI หยิบที่ดังแต่ไกล (เช่น เขาสก ~90 กม.) จนเวลาทริปเหลือพอแค่ 3-4 แห่ง
+PREFERRED_TRAVEL_SHARE = 1 / 6
+# จำนวน "สถานที่แนะนำเพิ่มเติม" ต่อหมวดที่ส่งกลับไปให้ผู้ใช้เลือกเพิ่มเอง (นอกเหนือจากแผนหลัก)
+ALTERNATIVES_PER_CATEGORY = 4
 
 def parse_price_to_number(price_str) -> float:
     """แปลงข้อความราคา (เช่น '50 บาท/คน', 'ฟรี', '') ให้เป็นตัวเลขบาทโดยประมาณ"""
@@ -1145,12 +1148,20 @@ def recommend_trip(req: TripRequest):
             budget_warning = "งบประมาณหรือเวลาที่ระบุอาจไม่พอสำหรับสถานที่ที่แนะนำ ระบบเลือกตัวเลือกที่ประหยัดที่สุดให้แทนอย่างน้อย 1 แห่ง"
 
         route_plan, total_time = plan_route_hours(chosen, gps, far_from_province)
-        for p in route_plan:
+
+        # 5. สถานที่แนะนำเพิ่มเติม: ที่เหลือในแต่ละหมวดตามลำดับความสำคัญเดิม ให้ผู้ใช้กดเพิ่มลงทริปเองได้
+        #    (ไม่นับรวมในงบ/เวลาของแผนหลัก)
+        chosen_names = {p['name'] for p in chosen}
+        alternatives = []
+        for places in by_category.values():
+            alternatives += [p for p in places if p['name'] not in chosen_names][:ALTERNATIVES_PER_CATEGORY]
+        for p in route_plan + alternatives:
             p.pop('_from_start_km', None)
 
         return {
             "status": "success",
             "route": route_plan,
+            "alternatives": alternatives,
             "estimated_cost": round(total_cost, 2),
             "estimated_time_hours": round(total_time, 2),
             "budget_warning": budget_warning,

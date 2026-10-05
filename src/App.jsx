@@ -117,6 +117,8 @@ function App() {
   const [gpsStatus, setGpsStatus] = useSessionState('gpsStatus', '');
 
   const [aiRoute, setAiRoute] = useSessionState('aiRoute', []);
+  // สถานที่แนะนำเพิ่มเติมนอกแผนหลัก (ผู้ใช้เลือกเพิ่มลงทริปเองได้)
+  const [aiAlternatives, setAiAlternatives] = useSessionState('aiAlternatives', []);
   const [estimatedCost, setEstimatedCost] = useSessionState('estimatedCost', 0);
   const [estimatedTimeHours, setEstimatedTimeHours] = useSessionState('estimatedTimeHours', 0);
   const [budgetWarning, setBudgetWarning] = useSessionState('budgetWarning', null);
@@ -374,6 +376,7 @@ function App() {
       });
       if (response.data.status === 'success') {
         setAiRoute(response.data.route);
+        setAiAlternatives(response.data.alternatives || []);
         setEstimatedCost(response.data.estimated_cost || 0);
         setEstimatedTimeHours(response.data.estimated_time_hours || 0);
         setBudgetWarning(response.data.budget_warning || null);
@@ -699,6 +702,7 @@ function App() {
       {currentScreen === 'ai-result' && (
         <AiResultScreen
           aiRoute={aiRoute}
+          aiAlternatives={aiAlternatives}
           homePlaces={homePlacesWithDistance}
           selectedTripPlaces={selectedTripPlaces}
           togglePlaceSelection={togglePlaceSelection}

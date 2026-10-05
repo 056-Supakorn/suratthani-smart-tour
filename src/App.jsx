@@ -51,6 +51,8 @@ const VR_VIEWER_STRINGS_TH = {
 // หน้าที่ต้องเข้าสู่ระบบก่อน และหน้าที่ต้องมีข้อมูลประกอบ (ใช้ตรวจตอนกู้คืนหน้าหลังรีเฟรช)
 const LOGGED_OUT_SCREENS = ['login', 'register'];
 const TOURIST_SCREENS = ['onboarding', 'home', 'search-results', 'ai-input', 'ai-result', 'final-route', 'detail'];
+// ผู้ใช้อยู่ห่างจากจุดเริ่มที่ใช้เรียงแผนครั้งก่อนเกินระยะนี้ (กม.) -> เรียงเส้นทางใหม่จากตำแหน่งปัจจุบัน
+const ROUTE_MOVED_KM = 0.5;
 
 // ผู้ใช้ที่ล็อกอินไว้ก่อนระบบมี token (หรือล็อกอินแบบออฟไลน์) จะเรียก API ที่ต้องยืนยันตัวตนไม่ได้
 // จึงให้ออกจากระบบแล้วล็อกอินใหม่หนึ่งครั้ง (แอดมินใช้ adminKey แยกต่างหาก ไม่ได้รับผลกระทบ)
@@ -126,6 +128,8 @@ function App() {
   // 🌟 State ใหม่สำหรับเก็บสถานที่ที่ผู้ใช้เลือกเข้าทริป
   const [selectedTripPlaces, setSelectedTripPlaces] = useSessionState('selectedTripPlaces', []);
   const [finalRoutePlan, setFinalRoutePlan] = useSessionState('finalRoutePlan', []);
+  // พิกัดที่ใช้เป็นจุดเริ่มตอนเรียงแผนการเดินทางล่าสุด - ถ้าผู้ใช้ย้ายไปไกลกว่านี้จะเรียงเส้นทางใหม่
+  const [routeOrigin, setRouteOrigin] = useSessionState('routeOrigin', null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -214,20 +218,33 @@ function App() {
       },
       (error) => {
         setGpsStatus('❌ ไม่สามารถดึงตำแหน่งได้ (กรุณาอนุญาต Location)');
-      }
+      },
+      // timeout: มือถือที่ปิด Location บางรุ่นไม่ตอบกลับเลย / maximumAge: ไม่ใช้ตำแหน่งที่เก่ากว่า 30 วินาที
+      { timeout: 15000, maximumAge: 30000 }
     );
   };
 
-  // หน้าแผนการเดินทาง: ต้องเริ่มจากตำแหน่งผู้ใช้ ถ้ายังไม่มีพิกัดให้ขอตำแหน่งทันทีที่เปิดหน้า
+  // ขอตำแหน่งใหม่ทุกครั้งที่เปิดหน้ากำหนดเงื่อนไข AI และหน้าแผนการเดินทาง
+  // (พิกัดเก็บไว้ในแท็บ ถ้าใช้ของเดิม ผู้ใช้ที่ย้ายที่แล้วจะได้หมุดเริ่มต้นเป็นตำแหน่งเก่า)
+  // หน้ากำหนดเงื่อนไข: ล้างพิกัดเก่าก่อน ถ้าขอตำแหน่งไม่ได้ AI จะแนะนำแบบไม่ใช้ระยะทาง แทนการใช้ตำแหน่งผิด
   useEffect(() => {
-    if (currentScreen === 'final-route' && (!userLat || !userLng)) getLocation();
+    if (currentScreen === 'ai-input') {
+      setUserLat(null);
+      setUserLng(null);
+      getLocation();
+    } else if (currentScreen === 'final-route') {
+      getLocation();
+    }
   }, [currentScreen]);
 
-  // ได้พิกัดแล้วแต่เส้นทางยังเรียงแบบไม่มี GPS -> จัดเรียงใหม่ให้เริ่มจากตำแหน่งผู้ใช้
+  // หน้าแผนการเดินทาง: เรียงเส้นทางใหม่จากตำแหน่งปัจจุบัน ถ้าแผนยังเรียงแบบไม่มี GPS
+  // หรือผู้ใช้อยู่ห่างจากจุดเริ่มที่ใช้เรียงครั้งก่อนเกิน ROUTE_MOVED_KM
   useEffect(() => {
-    if (currentScreen !== 'final-route' || !userLat || !userLng) return;
-    if (finalRoutePlan.length > 0 && finalRoutePlan.some((p) => p.route_distance === undefined)) {
+    if (currentScreen !== 'final-route' || !userLat || !userLng || finalRoutePlan.length === 0) return;
+    const moved = !routeOrigin || calculateDistance(routeOrigin[0], routeOrigin[1], userLat, userLng) > ROUTE_MOVED_KM;
+    if (moved || finalRoutePlan.some((p) => p.route_distance === undefined)) {
       setFinalRoutePlan(orderRouteFromUser(finalRoutePlan, userLat, userLng));
+      setRouteOrigin([userLat, userLng]);
     }
   }, [currentScreen, userLat, userLng, finalRoutePlan]);
 
@@ -446,6 +463,7 @@ function App() {
       ? orderRouteFromUser(selectedTripPlaces, userLat, userLng)
       : [...selectedTripPlaces].sort((a, b) => (a.distance_km || 0) - (b.distance_km || 0));
     setFinalRoutePlan(route);
+    setRouteOrigin(userLat && userLng ? [userLat, userLng] : null);
     setCurrentScreen('final-route');
 
     // ผู้ใช้ถูกระบุจาก token ที่แนบไปอัตโนมัติ

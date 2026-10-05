@@ -1,6 +1,6 @@
 budget,time_hours,category,trip_mood,travel_time_from_city,place_name
-2000,10,mountain,adventure,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-3000,24,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+2000,10,mountain,adventure,1.5,เขื่อนรัชชประภา
+3000,24,mountain,chill,1.5,เขื่อนรัชชประภา
 1500,8,sea,adventure,2.0,อุทยานแห่งชาติหมู่เกาะอ่างทอง
 2500,12,sea,chill,2.0,อุทยานแห่งชาติหมู่เกาะอ่างทอง
 5000,48,sea,chill,2.5,เกาะสมุย
@@ -53,14 +53,14 @@ budget,time_hours,category,trip_mood,travel_time_from_city,place_name
 1135,5.7,local,culture,1.0,ท่าเฟอร์รี่เกาะสมุย (ดอนสัก)
 137,0.9,local,social,1.0,ท่าเฟอร์รี่เกาะสมุย (ดอนสัก)
 1104,5.7,local,social,1.0,ท่าเฟอร์รี่เกาะสมุย (ดอนสัก)
-1233,5.8,sea,adventure,1.33,แหลมทราย
-4870,45.2,sea,adventure,1.33,แหลมทราย
-1144,6.5,sea,chill,1.33,แหลมทราย
-5148,49.0,sea,chill,1.33,แหลมทราย
-280,2.1,mountain,adventure,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-2332,23.4,mountain,adventure,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-329,2.1,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-2528,24.9,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+1233,5.8,sea,adventure,1.33,ชายหาดแหลมทราย
+4870,45.2,sea,adventure,1.33,ชายหาดแหลมทราย
+1144,6.5,sea,chill,1.33,ชายหาดแหลมทราย
+5148,49.0,sea,chill,1.33,ชายหาดแหลมทราย
+280,2.1,mountain,adventure,1.5,เขื่อนรัชชประภา
+2332,23.4,mountain,adventure,1.5,เขื่อนรัชชประภา
+329,2.1,mountain,chill,1.5,เขื่อนรัชชประภา
+2528,24.9,mountain,chill,1.5,เขื่อนรัชชประภา
 321,2.1,mountain,adventure,1.5,สะพานแขวนเขาพัง (ภูเขารูปหัวใจ)
 2365,21.8,mountain,adventure,1.5,สะพานแขวนเขาพัง (ภูเขารูปหัวใจ)
 289,1.9,mountain,chill,1.5,สะพานแขวนเขาพัง (ภูเขารูปหัวใจ)

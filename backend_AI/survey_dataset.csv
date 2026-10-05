@@ -45,13 +45,13 @@ budget,time_hours,category,trip_mood,travel_time_from_city,place_name
 10000,48.0,sea,chill,1.5,เกาะสมุย (หาดเฉวง)
 1000,6.0,mountain,culture,1,ป่าต้นน้ำ บ้านน้ำราด
 1000,6.0,temple,culture,0.75,พระบรมธาตุไชยา
-2000,48.0,mountain,culture,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+2000,48.0,mountain,culture,1.5,เขื่อนรัชชประภา
 1000,6.0,mountain,culture,1,ป่าต้นน้ำ บ้านน้ำราด
 5000,72.0,sea,culture,1.5,เกาะสมุย (หาดเฉวง)
-1000,8.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-1000,8.0,mountain,adventure,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-1000,8.0,mountain,culture,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-1000,8.0,mountain,social,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+1000,8.0,mountain,chill,1.5,เขื่อนรัชชประภา
+1000,8.0,mountain,adventure,1.5,เขื่อนรัชชประภา
+1000,8.0,mountain,culture,1.5,เขื่อนรัชชประภา
+1000,8.0,mountain,social,1.5,เขื่อนรัชชประภา
 1000,8.0,mountain,chill,1,ป่าต้นน้ำ บ้านน้ำราด
 1000,8.0,mountain,adventure,1,ป่าต้นน้ำ บ้านน้ำราด
 1000,8.0,mountain,culture,1,ป่าต้นน้ำ บ้านน้ำราด
@@ -105,35 +105,35 @@ budget,time_hours,category,trip_mood,travel_time_from_city,place_name
 1500,12.0,sea,chill,1,แหลมโพธิ์ หาดพุมเรียง
 3000,48.0,sea,chill,1,แหลมโพธิ์ หาดพุมเรียง
 1000,6.0,mountain,chill,1.75,อุทยานแห่งชาติเขาสก
-3000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+3000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา
 2000,10.0,sea,chill,2.5,หาดนางยวน เกาะเต่า
 4000,48.0,sea,chill,2.5,หาดนางยวน เกาะเต่า
-2000,8.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+2000,8.0,mountain,chill,1.5,เขื่อนรัชชประภา
 6000,48.0,sea,chill,1.5,เกาะสมุย (หาดเฉวง)
 1000,12.0,mountain,chill,1.75,อุทยานแห่งชาติเขาสก
 1500,48.0,mountain,chill,1.75,อุทยานแห่งชาติเขาสก
-1500,12.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-10000,72.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-2000,8.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+1500,12.0,mountain,chill,1.5,เขื่อนรัชชประภา
+10000,72.0,mountain,chill,1.5,เขื่อนรัชชประภา
+2000,8.0,mountain,chill,1.5,เขื่อนรัชชประภา
 10000,72.0,sea,chill,1.5,เกาะสมุย (หาดเฉวง)
 1500,8.0,mountain,chill,1,ป่าต้นน้ำ บ้านน้ำราด
 1500,8.0,mountain,social,1,ป่าต้นน้ำ บ้านน้ำราด
 3000,48.0,sea,chill,1.5,เกาะสมุย (หาดเฉวง)
 3000,48.0,sea,social,1.5,เกาะสมุย (หาดเฉวง)
-3000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-3000,48.0,mountain,social,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+3000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา
+3000,48.0,mountain,social,1.5,เขื่อนรัชชประภา
 20000,24.0,mountain,chill,1.75,อุทยานแห่งชาติเขาสก
 20000,24.0,mountain,adventure,1.75,อุทยานแห่งชาติเขาสก
 20000,72.0,sea,chill,1.5,เกาะสมุย (หาดเฉวง)
 20000,72.0,sea,adventure,1.5,เกาะสมุย (หาดเฉวง)
-3000,6.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+3000,6.0,mountain,chill,1.5,เขื่อนรัชชประภา
 5000,48.0,sea,chill,1.5,เกาะสมุย (หาดเฉวง)
 500,8.0,mountain,chill,1,ป่าต้นน้ำ บ้านน้ำราด
 500,8.0,mountain,adventure,1,ป่าต้นน้ำ บ้านน้ำราด
 500,8.0,mountain,social,1,ป่าต้นน้ำ บ้านน้ำราด
-3000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-3000,48.0,mountain,adventure,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-3000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+3000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา
+3000,48.0,mountain,adventure,1.5,เขื่อนรัชชประภา
+3000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา
 6500,72.0,sea,chill,1.5,เกาะสมุย (หาดเฉวง)
 1000,8.0,mountain,chill,1,ป่าต้นน้ำ บ้านน้ำราด
 1000,8.0,mountain,social,1,ป่าต้นน้ำ บ้านน้ำราด
@@ -148,20 +148,20 @@ budget,time_hours,category,trip_mood,travel_time_from_city,place_name
 6000,48.0,sea,adventure,1.5,เกาะสมุย (หาดเฉวง)
 6000,48.0,mountain,chill,1.75,อุทยานแห่งชาติเขาสก
 6000,48.0,mountain,adventure,1.75,อุทยานแห่งชาติเขาสก
-6000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-6000,48.0,mountain,adventure,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+6000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา
+6000,48.0,mountain,adventure,1.5,เขื่อนรัชชประภา
 2500,8.0,food,social,0.5,ตลาดศาลเจ้า (สตรีทฟู้ดโต้รุ่ง)
-15000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-15000,48.0,mountain,social,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+15000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา
+15000,48.0,mountain,social,1.5,เขื่อนรัชชประภา
 1500,4.0,mountain,chill,1,ป่าต้นน้ำ บ้านน้ำราด
-10000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+10000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา
 1500,8.0,mountain,chill,1.75,อุทยานแห่งชาติเขาสก
 5000,72.0,mountain,adventure,1.75,อุทยานแห่งชาติเขาสก
 500,6.0,mountain,chill,1.75,อุทยานแห่งชาติเขาสก
 3000,48.0,mountain,chill,1.75,อุทยานแห่งชาติเขาสก
 10000,48.0,mountain,chill,1.75,อุทยานแห่งชาติเขาสก
 3000,12.0,mountain,chill,1,ป่าต้นน้ำ บ้านน้ำราด
-3000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+3000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา
 5000,48.0,mountain,chill,1.75,อุทยานแห่งชาติเขาสก
 3500,6.0,mountain,chill,1,ป่าต้นน้ำ บ้านน้ำราด
 3500,6.0,mountain,adventure,1,ป่าต้นน้ำ บ้านน้ำราด
@@ -169,16 +169,16 @@ budget,time_hours,category,trip_mood,travel_time_from_city,place_name
 3500,6.0,temple,chill,0.75,พระบรมธาตุไชยา
 3500,6.0,temple,adventure,0.75,พระบรมธาตุไชยา
 3500,6.0,temple,social,0.75,พระบรมธาตุไชยา
-10000,72.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-10000,72.0,mountain,adventure,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-10000,72.0,mountain,culture,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+10000,72.0,mountain,chill,1.5,เขื่อนรัชชประภา
+10000,72.0,mountain,adventure,1.5,เขื่อนรัชชประภา
+10000,72.0,mountain,culture,1.5,เขื่อนรัชชประภา
 2000,12.0,mountain,chill,1,ป่าต้นน้ำ บ้านน้ำราด
-5000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+5000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา
 20000,12.0,mountain,chill,1,ป่าต้นน้ำ บ้านน้ำราด
-20000,120.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-20000,120.0,mountain,adventure,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-5000,12.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-5000,12.0,mountain,social,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+20000,120.0,mountain,chill,1.5,เขื่อนรัชชประภา
+20000,120.0,mountain,adventure,1.5,เขื่อนรัชชประภา
+5000,12.0,mountain,chill,1.5,เขื่อนรัชชประภา
+5000,12.0,mountain,social,1.5,เขื่อนรัชชประภา
 5000,12.0,mountain,chill,1.5,สะพานแขวนเขาพัง (ภูเขารูปหัวใจ)
 5000,12.0,mountain,social,1.5,สะพานแขวนเขาพัง (ภูเขารูปหัวใจ)
 12000,72.0,sea,chill,1.5,เกาะสมุย (หาดเฉวง)
@@ -189,7 +189,7 @@ budget,time_hours,category,trip_mood,travel_time_from_city,place_name
 5000,72.0,sea,adventure,1.5,เกาะสมุย (หาดเฉวง)
 5000,72.0,sea,social,1.5,เกาะสมุย (หาดเฉวง)
 1500,8.0,mountain,adventure,1.75,อุทยานแห่งชาติเขาสก
-3000,48.0,mountain,adventure,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+3000,48.0,mountain,adventure,1.5,เขื่อนรัชชประภา
 2000,24.0,cafe,chill,0.25,Lamphu Cafe (ลำภู คาเฟ่ริมน้ำ)
 2000,24.0,cafe,adventure,0.25,Lamphu Cafe (ลำภู คาเฟ่ริมน้ำ)
 2000,24.0,cafe,culture,0.25,Lamphu Cafe (ลำภู คาเฟ่ริมน้ำ)
@@ -219,20 +219,20 @@ budget,time_hours,category,trip_mood,travel_time_from_city,place_name
 1000,6.0,mountain,social,1,ป่าต้นน้ำ บ้านน้ำราด
 5000,72.0,sea,chill,1.5,เกาะสมุย (หาดเฉวง)
 5000,72.0,sea,adventure,1.5,เกาะสมุย (หาดเฉวง)
-5000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-5000,48.0,mountain,social,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+5000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา
+5000,48.0,mountain,social,1.5,เขื่อนรัชชประภา
 1000,6.0,mountain,chill,1.75,อุทยานแห่งชาติเขาสก
 2000,48.0,mountain,adventure,1.75,อุทยานแห่งชาติเขาสก
 1000,8.0,mountain,chill,1,ป่าต้นน้ำ บ้านน้ำราด
 1000,8.0,mountain,social,1,ป่าต้นน้ำ บ้านน้ำราด
-3500,48.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-3500,48.0,mountain,social,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+3500,48.0,mountain,chill,1.5,เขื่อนรัชชประภา
+3500,48.0,mountain,social,1.5,เขื่อนรัชชประภา
 1500,8.0,mountain,chill,1,ป่าต้นน้ำ บ้านน้ำราด
 5000,72.0,sea,chill,1.5,เกาะสมุย (หาดเฉวง)
 5000,72.0,sea,adventure,1.5,เกาะสมุย (หาดเฉวง)
 1500,8.0,mountain,adventure,1,ป่าต้นน้ำ บ้านน้ำราด
 1500,8.0,sea,social,1.5,เกาะสมุย (หาดเฉวง)
-5000,72.0,mountain,adventure,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+5000,72.0,mountain,adventure,1.5,เขื่อนรัชชประภา
 500,4.0,mountain,culture,1.75,อุทยานแห่งชาติเขาสก
 500,4.0,mountain,social,1.75,อุทยานแห่งชาติเขาสก
 1000,12.0,mountain,adventure,1,ป่าต้นน้ำ บ้านน้ำราด
@@ -254,5 +254,5 @@ budget,time_hours,category,trip_mood,travel_time_from_city,place_name
 1500,12.0,cafe,chill,0.25,Lamphu Cafe (ลำภู คาเฟ่ริมน้ำ)
 3000,8.0,mountain,chill,1.75,อุทยานแห่งชาติเขาสก
 5000,48.0,sea,chill,1.5,เกาะสมุย (หาดเฉวง)
-5000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
-5000,48.0,mountain,adventure,1.5,เขื่อนรัชชประภา (เขาสามเกลอ)
+5000,48.0,mountain,chill,1.5,เขื่อนรัชชประภา
+5000,48.0,mountain,adventure,1.5,เขื่อนรัชชประภา

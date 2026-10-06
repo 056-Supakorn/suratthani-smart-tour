@@ -29,7 +29,7 @@
 ## 🛠️ สถาปัตยกรรมและเทคโนโลยีที่ใช้ (Tech Stack)
 
 * **Frontend**: React 19, Vite, Vanilla CSS Design System (Light & Dark Theme), Pannellum VR 360
-* **Backend AI**: Python, FastAPI, Scikit-learn (Random Forest Machine Learning), Pandas, Uvicorn
+* **Backend AI**: Python, FastAPI, Scikit-learn (Logistic Regression Machine Learning, เลือกจากการเปรียบเทียบใน `backend_AI/evaluate_model.py`), Pandas, Uvicorn
 * **Database**: MongoDB Atlas, CSV Datasets
 * **Security**: Role-Based Access Control, Environment Variables, Secret Isolation
 

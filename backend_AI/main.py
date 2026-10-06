@@ -13,8 +13,10 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Optional
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler
 import base64
 import hashlib
 import hmac
@@ -166,7 +168,13 @@ REVERSE_CATEGORY_MAP = {v: k for k, v in CATEGORY_MAP.items()}
 DATASET_FILE = 'dataset.csv'
 # คำตอบแบบสอบถามจริงที่แปลงแล้วด้วย convert_survey.py - นำเข้า MongoDB ครั้งเดียว (ติดป้าย source=survey)
 SURVEY_DATASET_FILE = 'survey_dataset.csv'
-ai_model = RandomForestClassifier(n_estimators=100, random_state=42)
+# Logistic Regression: ชนะ 9 โมเดลที่เทียบใน evaluate_model.py (top-1 เฉลี่ย 73.4% เทียบ Random Forest เดิม 67.0%
+# p corrected = 0.0496) - C=0.1 คือค่าที่ validation เลือกบ่อยที่สุด (23 จาก 30 รอบ)
+# คอลัมน์: [งบ, เวลา, อารมณ์ (เลขจาก le_mood), หมวด (เลขจาก le_category)] - ปรับสเกลตัวเลข และแปลงอารมณ์/หมวดเป็น one-hot
+ai_model = make_pipeline(
+    ColumnTransformer([("num", StandardScaler(), [0, 1]), ("cat", OneHotEncoder(handle_unknown="ignore"), [2, 3])]),
+    LogisticRegression(C=0.1, max_iter=2000),
+)
 le_mood, le_category, le_place = LabelEncoder(), LabelEncoder(), LabelEncoder()
 is_ai_ready = False
 # place_name -> category, built fresh each train_ai() run. Lets /recommend restrict a
@@ -208,7 +216,7 @@ def train_ai():
             X['category'] = le_category.fit_transform(X['category'])
             y_encoded = le_place.fit_transform(y)
 
-            ai_model.fit(X, y_encoded)
+            ai_model.fit(X.values, y_encoded)
             place_category_map = dict(zip(df['place_name'], df['category']))
             is_ai_ready = True
             print("✅ [AI READY] โมเดลเรียนรู้จาก MongoDB พร้อมใช้งาน!")

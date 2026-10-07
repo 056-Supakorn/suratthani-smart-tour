@@ -24,6 +24,7 @@ export default function AdminScreen({
     tag: 'ธรรมชาติ',
     location: '',
     travelTime: '',
+    openHours: '',
     price: '',
     description: '',
     lat: '',
@@ -101,6 +102,7 @@ export default function AdminScreen({
       tag: place.tag || 'ธรรมชาติ',
       location: place.location || '',
       travelTime: place.travelTime || '',
+      openHours: place.openHours || '',
       price: place.price || '',
       description: place.description || '',
       lat: String(place.lat ?? ''),
@@ -580,7 +582,8 @@ export default function AdminScreen({
                             <p><b>ชื่อสถานที่:</b> {merchant.name}</p>
                             <p><b>หมวดหมู่:</b> {merchant.tag}</p>
                             <p><b>อำเภอ:</b> {merchant.location || '-'}</p>
-                            <p><b>เวลาทำการ:</b> {merchant.travelTime || '-'}</p>
+                            <p><b>เวลาเปิด-ปิด:</b> {merchant.openHours || '-'}</p>
+                            <p><b>เวลาเดินทางจากตัวเมือง:</b> {merchant.travelTime || '-'}</p>
                             <p><b>ค่าเข้าสถานที่:</b> {merchant.price ? merchant.price : 'ฟรี'}</p>
                             <p><b>รายละเอียด:</b> {merchant.description || '-'}</p>
                             <p><b>พิกัด GPS:</b> {merchant.lat}, {merchant.lng}</p>
@@ -668,12 +671,22 @@ export default function AdminScreen({
                     />
                   </div>
                   <div className="form-field-group">
-                    <label className="form-input-label">เวลาทำการ / เวลาเดินทาง</label>
+                    <label className="form-input-label">เวลาเปิด-ปิด</label>
+                    <input
+                      type="text"
+                      value={poiForm.openHours}
+                      onChange={(e) => setPoiForm({ ...poiForm, openHours: e.target.value })}
+                      placeholder="เช่น 08:00-18:00 น."
+                      className="merchant-text-input"
+                    />
+                  </div>
+                  <div className="form-field-group">
+                    <label className="form-input-label">เวลาเดินทางจากตัวเมือง</label>
                     <input
                       type="text"
                       value={poiForm.travelTime}
                       onChange={(e) => setPoiForm({ ...poiForm, travelTime: e.target.value })}
-                      placeholder="เช่น 1 ชั่วโมง"
+                      placeholder="เช่น 1 ชั่วโมง 30 นาที"
                       className="merchant-text-input"
                     />
                   </div>
@@ -827,7 +840,8 @@ export default function AdminScreen({
                     {expandedPlaceId === place.id && (
                       <div className="my-place-card-details" style={{ marginTop: '12px' }}>
                         <p><b>ค่าเข้าสถานที่:</b> {place.price ? place.price : 'ฟรี'}</p>
-                        <p><b>เวลาทำการ:</b> {place.travelTime || '-'}</p>
+                        <p><b>เวลาเปิด-ปิด:</b> {place.openHours || '-'}</p>
+                        <p><b>เวลาเดินทางจากตัวเมือง:</b> {place.travelTime || '-'}</p>
                         <p><b>รายละเอียด:</b> {place.description || '-'}</p>
                         {place.image && (
                           <img src={place.image} alt={place.name} className="image-preview-thumb" />

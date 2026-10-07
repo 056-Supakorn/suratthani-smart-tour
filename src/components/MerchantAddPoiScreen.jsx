@@ -33,7 +33,9 @@ export default function MerchantAddPoiScreen({
   const [description, setDescription] = useState(
     'คาเฟ่ริมหาดบรรยากาศสุดชิลล์ ชมวิวพระอาทิตย์ตกดิน เสิร์ฟเครื่องดื่มสดชื่น อาหารพื้นบ้าน และเบเกอรี่โฮมเมด'
   );
-  const [travelTime, setTravelTime] = useState('08:30 - 20:00 น.');
+  const [openHours, setOpenHours] = useState('08:30 - 20:00 น.');
+  // เวลาเดินทางจากตัวเมือง: ผู้ประกอบการไม่ได้กรอก แต่เก็บค่าเดิมไว้ตอนแก้ไขเพื่อไม่ให้ถูกลบ
+  const [travelTime, setTravelTime] = useState('');
   const [price, setPrice] = useState('');
   const [lat, setLat] = useState('9.5356');
   const [lng, setLng] = useState('99.9356');
@@ -158,6 +160,7 @@ export default function MerchantAddPoiScreen({
         tag: place.tag || '',
         location: place.location || '',
         travelTime: place.travelTime || '',
+        openHours: place.openHours || '',
         price: place.price || '',
         description: place.description || '',
         lat: parseFloat(place.lat) || 0,
@@ -233,6 +236,7 @@ export default function MerchantAddPoiScreen({
         tag: tag,
         location: district,
         travelTime: travelTime,
+        openHours: openHours.trim(),
         price: price.trim(),
         description: description.trim(),
         lat: parseFloat(lat) || 9.5356,
@@ -268,6 +272,7 @@ export default function MerchantAddPoiScreen({
     setDistrict(place.location || 'อำเภอเกาะสมุย');
     setDescription(place.description || '');
     setTravelTime(place.travelTime || '');
+    setOpenHours(place.openHours || '');
     setPrice(place.price || '');
     setLat(String(place.lat ?? '9.5356'));
     setLng(String(place.lng ?? '99.9356'));
@@ -287,7 +292,8 @@ export default function MerchantAddPoiScreen({
     setTag('คาเฟ่');
     setDistrict('อำเภอเกาะสมุย');
     setDescription('');
-    setTravelTime('08:30 - 20:00 น.');
+    setTravelTime('');
+    setOpenHours('08:30 - 20:00 น.');
     setPrice('');
     setLat('9.5356');
     setLng('99.9356');
@@ -493,11 +499,11 @@ export default function MerchantAddPoiScreen({
 
                 {/* Field 4: Operating Hours */}
                 <div className="form-field-group">
-                  <label className="form-input-label">เวลาทำการ / เวลาเปิด-ปิด</label>
+                  <label className="form-input-label">เวลาเปิด-ปิด</label>
                   <input
                     type="text"
-                    value={travelTime}
-                    onChange={(e) => setTravelTime(e.target.value)}
+                    value={openHours}
+                    onChange={(e) => setOpenHours(e.target.value)}
                     placeholder="เช่น 08:30 - 20:00 น. (เปิดทุกวัน)"
                     className="merchant-text-input"
                   />
@@ -724,7 +730,7 @@ export default function MerchantAddPoiScreen({
                     {expandedPlaceId === place.id && (
                       <div className="my-place-card-details">
                         <p><b>อำเภอ:</b> {place.location || '-'}</p>
-                        <p><b>เวลาทำการ:</b> {place.travelTime || '-'}</p>
+                        <p><b>เวลาเปิด-ปิด:</b> {place.openHours || '-'}</p>
                         <p><b>ค่าเข้าสถานที่:</b> {place.price ? place.price : 'ฟรี'}</p>
                         <p><b>รายละเอียด:</b> {place.description || '-'}</p>
                         <p><b>พิกัด GPS:</b> {place.lat}, {place.lng}</p>

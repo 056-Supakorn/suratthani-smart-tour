@@ -147,7 +147,7 @@ export default function FinalRouteScreen({
                 <div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                     <span className="card-category-tag" style={{ color: '#059669', fontSize: '12px' }}>{place.tag || 'สถานที่ท่องเที่ยว'}</span>
-                    <span style={{ fontSize: '12px', color: '#64748b' }}>เวลาแนะนำ: {place.travelTime || '1-2 ชม.'}</span>
+                    {place.openHours && <span style={{ fontSize: '12px', color: '#64748b' }}>เวลาเปิด-ปิด: {place.openHours}</span>}
                   </div>
                   <h3 className="card-place-title" style={{ fontSize: '18px', marginBottom: '6px' }}>{place.name}</h3>
                   <p className="card-place-location" style={{ marginBottom: '12px' }}>📌 {place.location || 'สุราษฎร์ธานี'}</p>

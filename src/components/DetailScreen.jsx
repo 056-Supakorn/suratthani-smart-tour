@@ -99,9 +99,14 @@ export default function DetailScreen({
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
+                {selectedAttraction.openHours && (
+                  <span className="filter-badge approved" style={{ fontSize: '13px', padding: '8px 16px' }}>
+                    ⏱️ เวลาเปิด-ปิด: {selectedAttraction.openHours}
+                  </span>
+                )}
                 {selectedAttraction.travelTime && (
                   <span className="filter-badge approved" style={{ fontSize: '13px', padding: '8px 16px' }}>
-                    ⏱️ เวลาเปิด: {selectedAttraction.travelTime}
+                    🚗 เดินทางจากตัวเมือง: {selectedAttraction.travelTime}
                   </span>
                 )}
                 <span className="filter-badge pending" style={{ fontSize: '13px', padding: '8px 16px' }}>

@@ -137,6 +137,7 @@ def seed_places_from_csv():
                         "vr_image": place["vr_image"],
                         "location": place["location"],
                         "travelTime": place["travelTime"],
+                        "openHours": place.get("openHours", ""),
                         "description": place["description"],
                         "lat": float(place["lat"]),
                         "lng": float(place["lng"]),
@@ -295,7 +296,8 @@ class MerchantPlaceSubmission(BaseModel):
     name: str
     tag: str = ""
     location: str = ""
-    travelTime: str = ""
+    travelTime: str = ""  # เวลาเดินทางจากตัวเมือง เช่น "1 ชั่วโมง 30 นาที"
+    openHours: str = ""  # เวลาเปิด-ปิด เช่น "08:00-18:00 น."
     description: str = ""
     lat: float = 0.0
     lng: float = 0.0
@@ -317,7 +319,8 @@ class MerchantPlaceEditRequest(BaseModel):
     name: str
     tag: str = ""
     location: str = ""
-    travelTime: str = ""
+    travelTime: str = ""  # เวลาเดินทางจากตัวเมือง เช่น "1 ชั่วโมง 30 นาที"
+    openHours: str = ""  # เวลาเปิด-ปิด เช่น "08:00-18:00 น."
     description: str = ""
     lat: float = 0.0
     lng: float = 0.0
@@ -329,7 +332,8 @@ class AdminPlaceUpsert(BaseModel):
     name: str
     tag: str = ""
     location: str = ""
-    travelTime: str = ""
+    travelTime: str = ""  # เวลาเดินทางจากตัวเมือง เช่น "1 ชั่วโมง 30 นาที"
+    openHours: str = ""  # เวลาเปิด-ปิด เช่น "08:00-18:00 น."
     description: str = ""
     lat: float = 0.0
     lng: float = 0.0

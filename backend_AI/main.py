@@ -169,8 +169,8 @@ REVERSE_CATEGORY_MAP = {v: k for k, v in CATEGORY_MAP.items()}
 DATASET_FILE = 'dataset.csv'
 # คำตอบแบบสอบถามจริงที่แปลงแล้วด้วย convert_survey.py - นำเข้า MongoDB ครั้งเดียว (ติดป้าย source=survey)
 SURVEY_DATASET_FILE = 'survey_dataset.csv'
-# Logistic Regression: ชนะ 9 โมเดลที่เทียบใน evaluate_model.py (top-1 เฉลี่ย 73.4% เทียบ Random Forest เดิม 67.0%
-# p corrected = 0.0496) - C=0.1 คือค่าที่ validation เลือกบ่อยที่สุด (23 จาก 30 รอบ)
+# Logistic Regression: top-1 เฉลี่ยสูงสุดใน 9 โมเดลที่เทียบใน evaluate_model.py (73.4% เทียบ Random Forest เดิม 66.6%
+# ดีกว่าการไม่ใช้ AI อย่างมีนัยสำคัญ p = 0.006) - C=0.1 คือค่าที่ validation เลือกบ่อยที่สุด (23 จาก 30 รอบ)
 # คอลัมน์: [งบ, เวลา, อารมณ์ (เลขจาก le_mood), หมวด (เลขจาก le_category)] - ปรับสเกลตัวเลข และแปลงอารมณ์/หมวดเป็น one-hot
 ai_model = make_pipeline(
     ColumnTransformer([("num", StandardScaler(), [0, 1]), ("cat", OneHotEncoder(handle_unknown="ignore"), [2, 3])]),

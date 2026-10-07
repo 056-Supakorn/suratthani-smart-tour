@@ -153,7 +153,11 @@ def one_split(other, survey, seed):
 
 def main():
     other, source = load_other_rows()
-    other = other[FEATURES + ["place_name"]].dropna()
+    # MongoDB ไม่รับประกันลำดับแถว และบางโมเดล (Random Forest, KNN, MLP, SVM, Gradient Boosting) ให้ผลต่างกันเมื่อลำดับแถวเปลี่ยน
+    # จึงเรียงแถวให้คงที่ก่อนใช้ ทุกครั้งที่รันจะได้ผลเท่ากัน
+    other = (other[FEATURES + ["place_name"]].dropna()
+             .sort_values(["category", "trip_mood", "place_name", "budget", "time_hours"], kind="mergesort")
+             .reset_index(drop=True))
     survey = pd.DataFrame(convert_survey.build(write=False))
     print(f"ข้อมูลแบบสอบถาม: {len(survey)} แถว จากผู้ตอบ {survey['_respondent'].nunique()} คน")
     print(f"ข้อมูลฝึกเพิ่มเติม ({source}): {len(other)} แถว (ใช้ฝึกอย่างเดียว)")

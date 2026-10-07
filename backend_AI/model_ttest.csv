@@ -1,10 +1,10 @@
 ﻿compared_with,mean_diff,p_paired,p_corrected
 Naive Bayes,1.6794,0.1487,0.4913
-Neural Network (MLP),2.987,0.0043,0.1562
-Random Forest (ปรับพารามิเตอร์),3.8019,0.0106,0.2092
+Neural Network (MLP),3.6391,0.0051,0.1648
+SVM (RBF),4.5579,0.0134,0.2258
 Decision Tree,4.7832,0.0033,0.1433
-SVM (RBF),4.8946,0.0105,0.2088
-Random Forest (แบบที่ระบบใช้จริง),6.4172,0.0001,0.0496
-K-Nearest Neighbors,7.6619,0.0,0.0193
+Random Forest (ปรับพารามิเตอร์),4.8834,0.0003,0.0609
+Random Forest (แบบที่ระบบใช้จริง),6.7466,0.0003,0.063
+K-Nearest Neighbors,7.2222,0.0,0.0298
+Gradient Boosting,9.2992,0.0,0.0189
 Baseline: แนะนำที่ยอดนิยมที่สุด (ไม่ใช้ AI),9.499,0.0,0.006
-Gradient Boosting,9.785,0.0,0.0106

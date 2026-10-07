@@ -1163,10 +1163,20 @@ def recommend_trip(req: TripRequest):
 
         # 5. สถานที่แนะนำเพิ่มเติม: ที่เหลือในแต่ละหมวดตามลำดับความสำคัญเดิม ให้ผู้ใช้กดเพิ่มลงทริปเองได้
         #    (ไม่นับรวมในงบ/เวลาของแผนหลัก)
+        #    มี GPS: ที่ AI ให้คะแนนติด 3 อันดับแรกของหมวดแต่อยู่นอกรัศมี (เช่น เขาสกในทริป 8 ชม.) ขึ้นก่อน
+        #    พร้อมป้าย far_ai_pick ผู้ใช้จึงยังเห็นที่ที่ AI แนะนำ แม้แผนหลักจะไม่เลือกเพราะไกลเกินเวลาทริป
         chosen_names = {p['name'] for p in chosen}
         alternatives = []
         for places in by_category.values():
-            alternatives += [p for p in places if p['name'] not in chosen_names][:ALTERNATIVES_PER_CATEGORY]
+            far_picks = []
+            if gps:
+                top3 = sorted((p for p in places if scores.get(p['name'], 0.0) > 0), key=lambda p: -scores[p['name']])[:3]
+                far_picks = [p for p in top3 if p['_from_start_km'] > radius_km and p['name'] not in chosen_names]
+                for p in far_picks:
+                    p['far_ai_pick'] = True
+            far_names = {p['name'] for p in far_picks}
+            rest = [p for p in places if p['name'] not in chosen_names and p['name'] not in far_names]
+            alternatives += (far_picks + rest)[:ALTERNATIVES_PER_CATEGORY]
         for p in route_plan + alternatives:
             p.pop('_from_start_km', None)
 

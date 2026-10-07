@@ -136,6 +136,12 @@ export default function AiResultScreen({
             </div>
           )}
 
+          {place.far_ai_pick && (
+            <p style={{ fontSize: '12.5px', color: '#b45309', background: 'rgba(245, 158, 11, 0.12)', borderRadius: '8px', padding: '6px 10px', margin: '0 0 14px' }}>
+              ⭐ AI แนะนำสำหรับคุณ แต่อยู่ไกลเกินเวลาทริปนี้ เหมาะกับทริปที่มีเวลามากขึ้นหรือค้างคืน
+            </p>
+          )}
+
           <div className="card-action-btns-wrap" style={{ width: '100%' }}>
             <button
               type="button"

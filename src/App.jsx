@@ -48,6 +48,39 @@ const VR_VIEWER_STRINGS_TH = {
   unknownError: 'เกิดข้อผิดพลาดในการแสดงภาพ VR กรุณาลองใหม่อีกครั้ง',
 };
 
+// ภาพพาโนรามาจากมือถือมักกว้างกว่า 2:1 (หมุนรอบตัว 360° แต่แนวตั้งแค่ราว 50-80°) - ถ้าไม่บอก Pannellum
+// จะถือว่าเป็นทรงกลมเต็ม 360°x180° แล้วยืดภาพในแนวตั้ง จึงกำหนดมุมแนวตั้งตามสัดส่วนภาพ และจำกัดการเงย/ก้ม
+// ไม่ให้เห็นพื้นที่ว่างเหนือ/ใต้ภาพ (ภาพ 2:1 ขึ้นไปถือว่าเป็น 360° เต็มทรงกลม ใช้ค่าเริ่มต้นเดิม)
+const panoramaCoverage = (width, height) => {
+  const ratio = width / height;
+  if (!(ratio > 2.05)) return {};
+  const vaov = 360 / ratio;
+  return { haov: 360, vaov, minPitch: -vaov / 2, maxPitch: vaov / 2, avoidShowingBackground: true };
+};
+
+// ภาพที่แนวตั้งไม่ถึง 180°: ซูมให้ความสูงของภาพพอดีกรอบ และห้ามซูมออกเกินนั้น ไม่ให้เห็นแถบดำเหนือ/ใต้ภาพ
+// (มุมมองกว้างสุด = มุมแนวนอนที่ทำให้มุมแนวตั้งของกรอบเท่ากับ vaov ตามสัดส่วนกว้าง/สูงของกรอบ)
+const fitPanoramaZoom = (viewer, container, vaov) => {
+  if (!viewer || !container || !container.clientHeight) return;
+  const aspect = container.clientWidth / container.clientHeight;
+  const maxHfov = (2 * Math.atan(Math.tan((vaov * Math.PI) / 360) * aspect) * 180) / Math.PI;
+  viewer.setHfovBounds([Math.min(50, maxHfov * 0.6), maxHfov]);
+  viewer.setHfov(maxHfov, false);
+};
+
+// ขนาด texture สูงสุดของ WebGL บนเครื่องนี้ (มือถือหลายรุ่น 4096-8192) - ใช้ย่อภาพ VR ที่ใหญ่เกินก่อนเปิด
+const getMaxTextureSize = () => {
+  try {
+    const gl = document.createElement('canvas').getContext('webgl');
+    if (!gl) return 4096;
+    const size = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return size;
+  } catch (e) {
+    return 4096;
+  }
+};
+
 // หน้าที่ต้องเข้าสู่ระบบก่อน และหน้าที่ต้องมีข้อมูลประกอบ (ใช้ตรวจตอนกู้คืนหน้าหลังรีเฟรช)
 const LOGGED_OUT_SCREENS = ['login', 'register'];
 const TOURIST_SCREENS = ['onboarding', 'home', 'search-results', 'ai-input', 'ai-result', 'final-route', 'detail'];
@@ -152,16 +185,40 @@ function App() {
     if (!vrMode || !currentVrPlace || !window.pannellum) return;
     let viewer = null;
     let cancelled = false;
-    const startViewer = () => {
+    let objectUrl = null;
+    let fitZoom = null;
+    const startViewer = async () => {
       if (cancelled) return;
+      const w = probe.naturalWidth, h = probe.naturalHeight;
+      // Pannellum (WebGL) can't open an image wider than 2x the device's max texture size -
+      // many phones allow 4096-8192, so shrink larger panoramas (e.g. 18688 px) to fit.
+      let src = currentVrPlace.vr_image;
+      const maxTexture = getMaxTextureSize();
+      const scale = Math.min(1, (2 * maxTexture) / w, maxTexture / h);
+      if (scale < 1) {
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.floor(w * scale);
+        canvas.height = Math.floor(h * scale);
+        canvas.getContext('2d').drawImage(probe, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+        if (cancelled) return;
+        if (blob) src = objectUrl = URL.createObjectURL(blob);
+      }
       setVrPreparing(false);
+      const coverage = panoramaCoverage(w, h);
       viewer = window.pannellum.viewer('panorama-container', {
         type: 'equirectangular',
-        panorama: currentVrPlace.vr_image,
+        panorama: src,
         autoLoad: true,
         autoRotate: -2,
         strings: VR_VIEWER_STRINGS_TH,
+        ...coverage,
       });
+      if (coverage.vaov) {
+        fitZoom = () => fitPanoramaZoom(viewer, document.getElementById('panorama-container'), coverage.vaov);
+        viewer.on('load', fitZoom);
+        window.addEventListener('resize', fitZoom);
+      }
     };
     // Check the image loads before starting the viewer: a missing file would otherwise
     // leave the viewer stuck on "loading" (the host answers with the app page, not a 404).
@@ -180,6 +237,8 @@ function App() {
       cancelled = true;
       probe.onload = probe.onerror = null;
       try { if (viewer) viewer.destroy(); } catch (e) {}
+      if (fitZoom) window.removeEventListener('resize', fitZoom);
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [vrMode, currentVrPlace]);
 
